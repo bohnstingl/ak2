@@ -1,11 +1,12 @@
 #include <iostream>
 #include <iomanip>
-#include "crypto++/aes.h"
 #include <thread>
+#include <map>
 #include <ctime>
 #include <cstdlib>
+#include <algorithm>
+#include <cstring>
 
-using namespace CryptoPP;
 using namespace std;
 
 typedef unsigned char uint8_t;
@@ -242,9 +243,20 @@ uint8_t mulRijndaelPoly(uint8_t p1, uint8_t p2) {
     return (uint8_t) modRijndaelPoly(t);
 }
 
-uint8_t key_1[16] = {0x32,0x34,0x84,0x4F,0xE3,0xBA,0x1C,0x45,0x9A,0xEE,0xBE,0xFF,0x5A,0xB8,0xFA,0x83};
-uint8_t key_2[16] = {0xF2,0x24,0x8F,0xEF,0xC2,0xBA,0x4F,0x90,0x93,0xFE,0xBE,0x21,0x4C,0xA2,0x3A,0x43};
-uint8_t key_3[16] = {0x14,0xC3,0xA4,0xCF,0x83,0x7A,0x3B,0x15,0x0A,0xBE,0x31,0x57,0xE3,0x48,0x63,0x13};
+uint8_t key_1[16] = {0x32,0x34,0x84,0x4F,
+                     0xE3,0xBA,0x1C,0x45,
+                     0x9A,0xEE,0xBE,0xFF,
+                     0x5A,0xB8,0xFA,0x83};
+
+uint8_t key_2[16] = {0xF2,0x24,0x8F,0xEF,
+                     0xC2,0xBA,0x4F,0x90,
+                     0x93,0xFE,0xBE,0x21,
+                     0x4C,0xA2,0x3A,0x43};
+
+uint8_t key_3[16] = {0x14,0xC3,0xA4,0xCF,
+                     0x83,0x7A,0x3B,0x15,
+                     0x0A,0xBE,0x31,0x57,
+                     0xE3,0x48,0x63,0x13};
 
 uint8_t key_4[16] = {0x22,0x24,0x72,0x12,
                      0xC2,0xBA,0x42,0x90,
@@ -307,9 +319,10 @@ void recover_key_col(uint col, uint8_t **c_sets, uint n_lambda_sets, uint8_t *ke
     for (int lambda_set = 0; lambda_set < n_lambda_sets; lambda_set++) {
         uint8_t *c_set = c_sets[lambda_set];
         uint64_t key_start = ((uint64_t) key_5[SHIFTED_IND(12 + col)] << 32) |
-                ((uint64_t) key_5[SHIFTED_IND(8 + col)] << 24);// |
-                //((uint64_t) key_5[SHIFTED_IND(4 + col)] << 16);
-        uint64_t key_end = key_start + ((uint64_t) 1 << 24);
+                ((uint64_t) key_5[SHIFTED_IND(8 + col)] << 24) |
+                ((uint64_t) (key_5[SHIFTED_IND(4 + col)] & 0xE0) << 16);
+        //uint64_t key_end = key_start + ((uint64_t) 1 << 24);
+        uint64_t key_end = key_start + ((uint64_t) 1 << 21);
         uint64_t key_step = (key_end - key_start) / n_threads;
         std::thread *threads = new std::thread[n_threads];
         std::map<uint64_t, uint> **key_counters = new std::map<uint64_t, uint>*[n_threads];
@@ -334,13 +347,14 @@ void recover_key_col(uint col, uint8_t **c_sets, uint n_lambda_sets, uint8_t *ke
 
     auto max = std::max_element(key_counter.begin(), key_counter.end(), cmp);
     std::cout << "found key: 0x" << std::hex << (uint64_t) max->first << std::endl;
-    //*key = max->first;
+
+    if (key_row != NULL)
+        for (int i = 0; i < 4; i ++)
+            key_row[i] = (max->first >> 8 * (i + 1)) & 0xFF;
 }
 
 int main() {
     uint8_t state[16]; // = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
-
-    std::map<uint8_t, uint> key_counter;
 
     build_multiplication_lookup();
 
@@ -353,6 +367,12 @@ int main() {
     uint8_t **p_sets = new uint8_t*[n_lambda_sets];
     uint8_t **c_sets = new uint8_t*[n_lambda_sets];
 
+    std::cout << "== SIMULATING A SQUARE ATTACK ON 5 ROUNDS AES =" << std::endl;
+    std::cout << "== - Recovering 13 bits of each column subkey =" << std::endl;
+    std::cout << "==   in the 5th round...                      =" << std::endl;
+    std::cout << "===============================================" << std::endl;
+
+    // GENERATE LAMBDA SETS ---
     for (int j = 0; j < n_lambda_sets; j ++) {
         uint8_t *p_set = new uint8_t[256 * 16];
         uint8_t *c_set = new uint8_t[256 * 16];
@@ -379,8 +399,34 @@ int main() {
         p_sets[j] = p_set;
         c_sets[j] = c_set;
     }
+    // --------------------------
 
-    recover_key_col(1, c_sets, n_lambda_sets, NULL);
+    // RECOVER 5th ROUND KEY BYTES
+    uint8_t recovered[16];
+    for (int i = 0; i < 4; i ++)
+        recover_key_col(i, c_sets, n_lambda_sets, &recovered[4 * i]);
+    // --------------------------
+
+    // TRANSPOSE recovered
+    for (int j = 0; j < 4; j ++)
+        for (int i = 0; i < j; i ++)
+            std::swap(recovered[4 * i + j], recovered[4 * j + i]);
+    // --------------------------
+
+    // ROW SHIFT recovered
+    aesShiftRows(recovered);
+    // --------------------------
+
+    std::cout << std::endl;
+
+    std::cout << "== 5th round key information:" << std::endl;
+    std::cout << "== - Recovered: " << std::endl;
+    printHexState(recovered);
+
+    std::cout << "== - Encrypted with: " << std::endl;
+    printHexState(key_5);
+
+    std::cout << " --- " << std::endl;
 
     std::cout << "passed time(clock): " << double(clock() - t) / CLOCKS_PER_SEC << " seconds " << std::endl;
     std::cout << "passed time(time): " << std::dec << time(NULL) - time_t1 << " seconds " << std::endl;

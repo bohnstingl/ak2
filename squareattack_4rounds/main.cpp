@@ -1,11 +1,12 @@
 #include <iostream>
 #include <iomanip>
-#include "crypto++/aes.h"
 #include <thread>
+#include <map>
 #include <ctime>
 #include <cstdlib>
+#include <algorithm>
+#include <cstring>
 
-using namespace CryptoPP;
 using namespace std;
 
 typedef unsigned char uint8_t;
@@ -13,12 +14,9 @@ typedef unsigned char uint8_t;
 uint8_t mulRijndaelPoly(uint8_t, uint8_t);
 
 #define xtime(x) (((x) << 1) ^ (((x) & 0x80) ? 0x1b : 0))
-#define MUL(p1, p2) (((p1) && (p2)) ? ex[(ln[(p1)] + ln[(p2)]) % 0xff] : 0)
 
 #define SHIFTED_IND(i) ((((i) >> 2) << 2) + (((i) - ((i) >> 2)) % 4))
 #define INV_SHIFTED_IND(i) ((((i) >> 2) << 2) + (((i) + ((i) >> 2)) % 4))
-
-//#define THREADS
 
 static const uint8_t sbox[256] =   {
         //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
@@ -57,19 +55,16 @@ static const uint8_t rsbox[256] =
           0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
           0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d };
 
-static uint8_t ex[256];
-static uint8_t ln[256];
+uint8_t mul_lookup[256 * 256];
 
-void generateExpLnTable(uint8_t ex[], uint8_t ln[]) {
-    int i;
-    uint8_t gen = 3;
-    ex[0] = 1;
-    ln[0] = 0; //Inf
-    for (i = 1; i < 256; i ++) {
-        ex[i] = mulRijndaelPoly(ex[i-1], gen);
-        ln[ex[i]] = i;
+#define MUL(a, b) (mul_lookup[(((uint8_t) a) << 8) | ((uint8_t) b)])
+
+void build_multiplication_lookup() {
+    for (int i = 0; i < 256; i ++) {
+        for (int j = 0; j < 256; j ++) {
+            mul_lookup[(i << 8) | j] = mulRijndaelPoly(i, j);
+        }
     }
-    ln[1] = 0xff;
 }
 
 void aesShiftRows(uint8_t state[]) {
@@ -120,43 +115,23 @@ void aesInvShiftRows(uint8_t state[]) {
     state[4] = temp;
 }
 
-void aesMixColumns(uint8_t state[]) {
-    uint8_t i;
-    uint8_t Tmp, Tm, t;
-    for (i = 0; i < 4; ++i) {
-        t = state[i];
-        Tmp = state[i] ^ state[4 + i] ^ state[8 + i] ^ state[12 + i];
-        Tm = state[i] ^ state[4 + i];
-        Tm = xtime(Tm);
-        state[i] ^= Tm ^ Tmp;
-        Tm = state[4 + i] ^ state[8 + i];
-        Tm = xtime(Tm);
-        state[4 + i] ^= Tm ^ Tmp;
-        Tm = state[8 + i] ^ state[12 + i];
-        Tm = xtime(Tm);
-        state[8 + i] ^= Tm ^ Tmp;
-        Tm = state[12 + i] ^ t;
-        Tm = xtime(Tm);
-        state[12 + i] ^= Tm ^ Tmp;
+void aesMixColumns(uint8_t state[])
+{
+    int i;
+    uint8_t a,b,c,d;
+    for(i=0;i<4;++i)
+    {
+        a = state[i];
+        b = state[4 + i];
+        c = state[8 + i];
+        d = state[12 + i];
+
+        state[i] = MUL(a, 0x02) ^ MUL(b, 0x03) ^ MUL(c, 0x01) ^ MUL(d, 0x01);
+        state[4 + i] = MUL(a, 0x01) ^ MUL(b, 0x02) ^ MUL(c, 0x03) ^ MUL(d, 0x01);
+        state[8 + i] = MUL(a, 0x01) ^ MUL(b, 0x01) ^ MUL(c, 0x02) ^ MUL(d, 0x03);
+        state[12 + i] = MUL(a, 0x03) ^ MUL(b, 0x01) ^ MUL(c, 0x01) ^ MUL(d, 0x02);
     }
 }
-/*
-#define mulInvMC(vec, col, row) (ln[ex[invMC[0][row]] ^ \
- ex[vec[col][0]]] ^ ln[ex[invMC[1][row]] ^ ex[vec[col][1]]] ^ \
- ln[ex[invMC[2][row]] ^ ex[vec[col][2]]] ^ \
- ln[ex[invMC[3][row]] ^ ex[vec[col][3]]])
-
-void aesInvMixColumns(uint8_t state[][4]) {
-    uint8_t i;
-    uint8_t temp[4][4];
-    memcpy(temp, state, 16);
-    for (i = 0; i < 4; i ++) {
-        state[i][0] = mulInvMC(temp, i, 0);
-        state[i][1] = mulInvMC(temp, i, 1);
-        state[i][2] = mulInvMC(temp, i, 2);
-        state[i][3] = mulInvMC(temp, i, 3);
-    }
-}*/
 
 void aesInvMixColumns(uint8_t state[])
 {
@@ -176,24 +151,21 @@ void aesInvMixColumns(uint8_t state[])
     }
 }
 
-/*void aesMixColumns(uint8_t state[])
+void aesInvMixColumns(uint8_t state[], uint col)
 {
-    int i;
-    uint8_t a,b,c,d;
-    for(i=0;i<4;++i)
-    {
-        a = state[i];
-        b = state[4 + i];
-        c = state[8 + i];
-        d = state[12 + i];
+    uint8_t a, b, c, d;
 
-        state[i] = mulRijndaelPoly(a, 0x02) ^ mulRijndaelPoly(b, 0x03) ^ mulRijndaelPoly(c, 0x01) ^ mulRijndaelPoly(d, 0x01);
-        state[4 + i] = mulRijndaelPoly(a, 0x01) ^ mulRijndaelPoly(b, 0x02) ^ mulRijndaelPoly(c, 0x03) ^ mulRijndaelPoly(d, 0x01);
-        state[8 + i] = mulRijndaelPoly(a, 0x01) ^ mulRijndaelPoly(b, 0x01) ^ mulRijndaelPoly(c, 0x02) ^ mulRijndaelPoly(d, 0x03);
-        state[12 + i] = mulRijndaelPoly(a, 0x03) ^ mulRijndaelPoly(b, 0x01) ^ mulRijndaelPoly(c, 0x01) ^ mulRijndaelPoly(d, 0x02);
-    }
+    a = state[col];
+    b = state[4 + col];
+    c = state[8 + col];
+    d = state[12 + col];
+
+    state[col] = MUL(a, 0x0e) ^ MUL(b, 0x0b) ^ MUL(c, 0x0d) ^ MUL(d, 0x09);
+    state[4 + col] = MUL(a, 0x09) ^ MUL(b, 0x0e) ^ MUL(c, 0x0b) ^ MUL(d, 0x0d);
+    state[8 + col] = MUL(a, 0x0d) ^ MUL(b, 0x09) ^ MUL(c, 0x0e) ^ MUL(d, 0x0b);
+    state[12 + col] = MUL(a, 0x0b) ^ MUL(b, 0x0d) ^ MUL(c, 0x09) ^ MUL(d, 0x0e);
 }
-*/
+
 void aesSubBytes(uint8_t state[]) {
     uint8_t i;
     for (i = 0; i < 16; i ++) {
@@ -237,20 +209,6 @@ void printHexState(uint8_t state[]) {
         std::cout << std::endl;
     }
     std::cout << std::endl;
-}
-
-void printExpLnTable() {
-    for (int i = 0; i < 256; i ++) {
-        if (!(i % 16))
-            std::cout << std::endl;
-        std::cout << std::setw(3) << std::hex << (int) ex[i];
-    }
-    std::cout << std::endl;
-    for (int i = 0; i < 256; i ++) {
-        if (!(i % 16))
-            std::cout << std::endl;
-        std::cout << std::setw(3) << std::hex << (int) ln[i];
-    }
 }
 
 void generateRandomState(uint8_t state[]) {
@@ -334,12 +292,20 @@ int main() {
 
     clock_t t = clock();
 
-    generateExpLnTable(ex, ln);
+    build_multiplication_lookup();
 
     uint n_lambda_sets = 4;
     uint8_t **p_sets = new uint8_t*[n_lambda_sets];
     uint8_t **c_sets = new uint8_t*[n_lambda_sets];
 
+    std::cout << "== SIMULATING A SQUARE ATTACK ON 4 ROUNDS AES =" << std::endl;
+    std::cout << "== - Recovering each bit of the 4th round key =" << std::endl;
+    std::cout << "===============================================" << std::endl;
+
+    uint8_t sum[16];
+    bool balanced = true;
+
+    // GENERATE LAMDBA SETS ---
     for (int j = 0; j < n_lambda_sets; j ++) {
         uint8_t *p_set = new uint8_t[256 * 16];
         uint8_t *c_set = new uint8_t[256 * 16];
@@ -351,10 +317,19 @@ int main() {
         }
 
         memcpy(c_set, p_set, 256 * 16);
+
+        // INITIALIZE BALANCE SUM
+        memset(sum, 0, 16);
+
         for (int i = 0; i < 256; i ++) {
             aesRound(&c_set[16 * i], key_1);
             aesRound(&c_set[16 * i], key_2);
             aesRound(&c_set[16 * i], key_3);
+
+            // XOR ALL BYTES IN LAMBDA SET
+            for (int byte = 0; byte < 16; byte ++) {
+                sum[byte] ^= c_set[16 * i + byte];
+            }
 
             //final round
             aesSubBytes(&c_set[16 * i]);
@@ -362,28 +337,38 @@ int main() {
             aesAddKey(&c_set[16 * i], key_4);
         }
 
+        //VERIFY IF BALANCED
+        for (int byte = 0; byte < 16; byte ++)
+            if (sum[byte])
+                balanced = false;
+
         p_sets[j] = p_set;
         c_sets[j] = c_set;
     }
+    // --------------------------
 
-    // last round key recover
+    std::cout << "== Distinguisher property for built lambda sets is: ";
+    if (balanced)
+        std::cout << "fulfilled (should always be the case)";
+    else
+        std::cout << "violated (!)";
+    std::cout << std::endl << std::endl;
+
+    // 4th ROUND KEY RECOVER
     uint8_t key_recovered[16];
-#ifdef THREADS
-    std::thread threads[16];
-#endif
     for (int key_byte = 0; key_byte < 16; key_byte++) {
-#ifdef THREADS
-        threads[key_byte] = std::thread(recover_key_byte, key_byte, c_sets, n_lambda_sets, &key_recovered[key_byte]);
-#else
         recover_key_byte(key_byte, c_sets, n_lambda_sets, &key_recovered[key_byte]);
-#endif
     }
-#ifdef THREADS
-    for (int i = 0; i < 16; i ++)
-        threads[i].join();
-#endif
+    // --------------------------
 
+    std::cout << "== 4th round key information:" << std::endl;
+    std::cout << "== - Recovered: " << std::endl;
     printHexState(key_recovered);
+
+    std::cout << "== - Encrypted with: " << std::endl;
+    printHexState(key_4);
+
+    std::cout << " --- " << std::endl;
     std::cout << "passed time: " << double(clock() - t) / CLOCKS_PER_SEC << " seconds " << std::endl;
 
     for (int i = 0; i < n_lambda_sets; i ++) {
