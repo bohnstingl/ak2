@@ -12,13 +12,14 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <assert.h>
 
 #define uchar unsigned char
 #define uint unsigned int
 #define ENCRYPT 1
 #define DECRYPT 0
 #define ROUNDS 16
-#define DATA 524288
+#define DATA 65536
 
 // Obtain bit "b" from the left and shift it "c" places from the right
 #define BITNUM(a,b,c) (((a[(b)/8] >> (7 - (b%8))) & 0x01) << (c))
@@ -29,6 +30,8 @@
 #define SBOXBIT(a) (((a) & 0x20) | (((a) & 0x1f) >> 1) | (((a) & 0x01) << 4))
 
 int matches = 0, total = 0;
+uint cnt[64];
+
 uchar sbox1[64] = {
    14,  4,  13,  1,   2, 15,  11,  8,   3, 10,   6, 12,   5,  9,   0,  7,
     0, 15,   7,  4,  14,  2,  13,  1,  10,  6,  12, 11,   9,  5,   3,  8,
@@ -381,6 +384,18 @@ void des_crypt_5(uchar in[], uchar out[], uchar key[][6])
    //InvIP(state,out);
 }
 
+/*
+ * Results
+ * {0.499469, 0.499744, 0.499744, 0.500349, 0.499572, 0.499619, \
+0.500147, 0.499566, 0.49974000, 0.499912, 0.500235, 0.499903, \
+0.500383, 0.500093, 0.499829, 0.499903, 0.500284, 0.499815, 0.499591, \
+0.499888, 0.499689, 0.500065, 0.499997, 0.500106, 0.500435, 0.499777, \
+0.500106, 0.499735, 0.500027, 0.499716, 0.500099, 0.500181, 0.500181, \
+0.499884, 0.50032, 0.499983, 0.499983, 0.499600, 0.499581, 0.499919, \
+0.499493, 0.499986, 0.499795, 0.499915, 0.500062, 0.499893, 0.500865, \
+0.500102, 0.500093, 0.500312, 0.499897, 0.499591, 0.499708, 0.500253, \
+0.500167, 0.500225, 0.500309, 0.50001, 0.499723, 0.5499978, 0.499914}
+ */
 void des_crypt_7(uchar in[], uchar out[], uchar key[][6])
 {
    uint state[2],idx,t;
@@ -457,74 +472,92 @@ void des_crypt_8(uchar in[], uchar out[], uchar key[][6])
    memcpy(out, state, 8 * sizeof(uchar));
 }
 
-void des_crypt_8_attack(uchar in[], uchar out[], uchar key[][6])
+void des_crypt_8_attack(uchar in[][8], uchar out[][8], uchar key[][6])
 {
    uint state[2],idx,t;
-
-   uchar l07, l018, l024, r012, r016, r87, r818, r824, r829, l815;
-
-   //IP(state,in);
-   memcpy(state, in, 8 * sizeof(uchar));
-
-   //state[1] is the right hand side
-   //state[0] the left hand
-
-   l07 = (state[0] & (1 << 7)) != 0 ? 1 : 0;
-   l018 = (state[0] & (1 << 18)) != 0 ? 1 : 0;
-   l024 = (state[0] & (1 << 24)) != 0 ? 1 : 0;
-   r012 = (state[1] & (1 << 12)) != 0 ? 1 : 0;
-   r016 = (state[1] & (1 << 16)) != 0 ? 1 : 0;
-
-   for (idx=0; idx < 8; ++idx)
-   {
-      t = state[1];
-      state[1] = f(state[1],key[idx]) ^ state[0];
-      state[0] = t;
-   }
-
-   r87 = (state[1] & (1 << 7)) != 0 ? 1 : 0;
-   r818 = (state[1] & (1 << 18)) != 0 ? 1 : 0;
-   r824 = (state[1] & (1 << 24)) != 0 ? 1 : 0;
-   r829 = (state[1] & (1 << 29)) != 0 ? 1 : 0;
-   l815 = (state[0] & (1 << 15)) != 0 ? 1 : 0;
-
-   //Guess the key k8 (48 bits)
+   uchar counter = 0;
    uchar kguess[6];
    uint64_t ran = rand();
    ran = (ran << 32) | rand();
    memcpy(kguess, &ran, 6 * sizeof(uchar));
 
-   //Recompute the last round
-   uchar fs = (f(state[1],kguess) & (1 << 15)) != 0 ? 1 : 0;
+   printf("Performing attack\n");
 
+   //Generate round 8 sub key. Bits 42 to 47
+   for(uint i = 0; i < 64; i++)
+   {
+     cnt[i] = 0;
+     for(uint j = 0; j < DATA; j++)
+     {
+       uchar l07, l018, l024, r012, r016, r87, r818, r824, r829, l815;
+       kguess[5] = counter << 2;
 
+       memcpy(state, in[j], 8 * sizeof(uchar));
 
-   //Check
-   uchar erg = l07^l018^l024^r012^r016^r87^r818^r824^r829^l815^fs;
-   uchar k0 = (key[0][2] & (1 << 6)) != 0 ? 1 : 0;
-   uchar k019 = (key[0][2] & (1 << 3)) != 0 ? 1 : 0;
-   uchar k023 = (key[0][2] & (1 << 7)) != 0 ? 1 : 0;
-   uchar k1 = (key[1][2] & (1 << 6)) != 0 ? 1 : 0;
-   uchar k119 = (key[1][2] & (1 << 3)) != 0 ? 1 : 0;
-   uchar k123 = (key[1][2] & (1 << 7)) != 0 ? 1 : 0;
-   uchar k2 = (key[2][2] & (1 << 6)) != 0 ? 1 : 0;
-   uchar k3 = (key[3][2] & (1 << 6)) != 0 ? 1 : 0;
-   uchar k344 = (key[3][5] & (1 << 4)) != 0 ? 1 : 0;
-   uchar k4 = (key[4][2] & (1 << 6)) != 0 ? 1 : 0;
-   uchar k444 = (key[4][5] & (1 << 4)) != 0 ? 1 : 0;
-   uchar k5 = (key[5][2] & (1 << 6)) != 0 ? 1 : 0;
-   uchar k6 = (key[6][2] & (1 << 6)) != 0 ? 1 : 0;
-   uchar k7 = (key[7][2] & (1 << 6)) != 0 ? 1 : 0;
-   uchar keybit = k019^k023^k2^k344^k4^k6;
-   uchar keybit11 = k119^k123^k3^k444^k5^k7;
-   //printf("%02x || %02x -> ", erg, keybit);
+       l07 = (state[0] & (1 << 7)) != 0 ? 1 : 0;
+       l018 = (state[0] & (1 << 18)) != 0 ? 1 : 0;
+       l024 = (state[0] & (1 << 24)) != 0 ? 1 : 0;
+       r012 = (state[1] & (1 << 12)) != 0 ? 1 : 0;
+       r016 = (state[1] & (1 << 16)) != 0 ? 1 : 0;
 
-   matches += (erg == keybit) ? 1 : 0;
-   total++;
+       //We do not need this, because this was computed in advance
+       /*for (idx=0; idx < 8; ++idx)
+       {
+          t = state[1];
+          state[1] = f(state[1], key[idx]) ^ state[0];
+          state[0] = t;
+       }*/
 
-   memcpy(out, state, 8 * sizeof(uchar));
-   // Inverse IP
-   //InvIP(state,out);
+       memcpy(state, out[j], 8 * sizeof(uchar));
+
+       r87 = (state[1] & (1 << 7)) != 0 ? 1 : 0;
+       r818 = (state[1] & (1 << 18)) != 0 ? 1 : 0;
+       r824 = (state[1] & (1 << 24)) != 0 ? 1 : 0;
+       r829 = (state[1] & (1 << 29)) != 0 ? 1 : 0;
+       l815 = (state[0] & (1 << 15)) != 0 ? 1 : 0;
+
+       //Recompute the last round
+       uchar fs = (f(state[1], kguess) & (1 << 15)) != 0 ? 1 : 0;
+
+       //Check
+       uchar erg = l07^l018^l024^r012^r016^r87^r818^r824^r829^l815^fs;
+       uchar k0 = (key[0][2] & (1 << 6)) != 0 ? 1 : 0;
+       uchar k019 = (key[0][2] & (1 << 3)) != 0 ? 1 : 0;
+       uchar k023 = (key[0][2] & (1 << 7)) != 0 ? 1 : 0;
+       uchar k1 = (key[1][2] & (1 << 6)) != 0 ? 1 : 0;
+       uchar k119 = (key[1][2] & (1 << 3)) != 0 ? 1 : 0;
+       uchar k123 = (key[1][2] & (1 << 7)) != 0 ? 1 : 0;
+       uchar k2 = (key[2][2] & (1 << 6)) != 0 ? 1 : 0;
+       uchar k3 = (key[3][2] & (1 << 6)) != 0 ? 1 : 0;
+       uchar k344 = (key[3][5] & (1 << 4)) != 0 ? 1 : 0;
+       uchar k4 = (key[4][2] & (1 << 6)) != 0 ? 1 : 0;
+       uchar k444 = (key[4][5] & (1 << 4)) != 0 ? 1 : 0;
+       uchar k5 = (key[5][2] & (1 << 6)) != 0 ? 1 : 0;
+       uchar k6 = (key[6][2] & (1 << 6)) != 0 ? 1 : 0;
+       uchar k7 = (key[7][2] & (1 << 6)) != 0 ? 1 : 0;
+       uchar keybit = k019^k023^k2^k4^k6^k344;
+       uchar keybit11 = k119^k123^k3^k444^k5^k7;
+       //printf("%02x || %02x -> ", erg, keybit);
+
+       //matches += (erg == keybit) ? 1 : 0;
+       //total++;
+       //memcpy(out, state, 8 * sizeof(uchar));
+       cnt[i] += (erg == keybit) ? 1 : 0;
+     }
+     counter++;
+   }
+
+   //find the max and the min value
+   uint tmin = RAND_MAX, tmax = 0;
+   for(uint i = 0; i < 64; i++)
+   {
+     if(cnt[i] < tmin)
+       tmin = cnt[i];
+     if(cnt[i] > tmax)
+       tmax = cnt[i];
+   }
+
+   printf("Hier\n");
 }
 
 /************************************/
@@ -570,46 +603,41 @@ void generateRandomData(uchar input[][8], int amount)
 
 int main()
 {
-   unsigned char text1[8]={0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xE7},
-                 text2[8]={0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF},
-                 key1[8]={0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF},
-                 key2[8]={0x13,0x34,0x57,0x79,0x9B,0xBC,0xDF,0xF1},
+   unsigned char key1[8]={0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF},
                  out[8],schedule[ROUNDS][6],
                  input[DATA][8];
 
-   unsigned int state[2];
-
    srand(time(NULL));
 
-   /*
-   for(unsigned int j = 0; j < 8; j++)
+   for(unsigned int z = 0; z < 5; z++)
    {
-     generateRandomData(input, DATA);
-     for(unsigned int i = 0; i < DATA; i++)
+     for(unsigned int j = 0; j < 20; j++)
      {
-       key_schedule(key1,schedule,ENCRYPT);
-       des_crypt_7(input[i], out, schedule);
-       printtext(out);
-       //printtext(input[i]);
-       //printtext(key[i]);
+       generateRandomData(input, DATA);
+       for(unsigned int i = 0; i < DATA; i++)
+       {
+         key_schedule(key1,schedule,ENCRYPT);
+         //des_crypt_3(input[i], out, schedule);
+         des_crypt_5(input[i], out, schedule);
+         //des_crypt_7(input[i], out, schedule);
+       }
      }
-   }*/
+     printf("Found %d matches of %d -> %lf\n", matches, total, (double)matches / (double)total);
+     matches = 0;
+     total = 0;
+  }
 
    //Generate plain and cipher text pairs
-   key_schedule(key1,schedule,ENCRYPT);
-   uchar plain[DATA * 16][8], cipher[DATA * 16][8];
-   for(unsigned int i = 0; i < 16; i++)
+   /*key_schedule(key1,schedule,ENCRYPT);
+   uchar plain[DATA][8];
+   uchar cipher[DATA][8];
+
+   for(unsigned int j = 0; j < 10; j++)
    {
-     for(unsigned int j = 0; j < DATA; j++)
-     {
-       generateRandomDataWithDES(plain, cipher, schedule, DATA * 16);
-     }
-   }
+     generateRandomDataWithDES(plain, cipher, schedule, DATA);
+     des_crypt_8_attack(plain, cipher, schedule);
+   }*/
 
-   des_crypt_8_attack(plain, cipher, schedule);
-
-
-   printf("Found %d matches of %d -> %lf\n", matches, total, (double)matches / (double)total);
    /*exit(0);
 
    key_schedule(key1,schedule,ENCRYPT);
