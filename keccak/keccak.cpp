@@ -133,7 +133,7 @@ void printHexMessage(unsigned char hash[], int len)
   int i;
   for (i = 0; i < len; i++)
   {
-    printf("%02x ", hash[i]);
+    printf("0x%02x, ", hash[i]);
     if (((i + 1) % 20) == 0)
       printf("\n");
   }
@@ -212,18 +212,40 @@ void xorCipher(unsigned char part1[], unsigned char part2[], int len)
 
 void simpleCheckEquations()
 {
-  unsigned char testCipher[1600] = "00000101000001000000000010000001000000001010101000000000001000000000010000000100000000010001000010000000000000001010000000000100",
+  unsigned char testCipher1[1600] = "00000101000001000000000010000001000000001010101000000000001000000000010000000100000000010001000010000000000000001010000000000100",
+                testCipher2[1600] = "10101000010011001001010000011110000100000100100010000001010000000001001000101001001100001000001101110010100010000100010101111000",
+                testCipher3[1600] = "00000000100000000000000000010010000000000000101000010000000000000000000000100010110000000000111000010100000000100010000000001100",
+                testCipher4[1600] = "11000000001100010100011110011001101000010000011000010011000100011000000100000000010011000011110001010010011000010000001000000001",
+                testCipher5[1600] = "00100000101000000000000000000000010000000000001110010100010001000000000101000000100000000001000000001001000000101101000100000000",
                    testKey[1600] = "00000000100000000100000011000000001000001010000001100000111000000001000010010000010100001101000000110000101100000111000011110000";
-  unsigned char checkCipherE[15] = {7, 84, 112, 31, 87},
-                checkCipherN[15] = {15, 42, 96, 13, 69, 100},
-                checkKeyE[15] = {77, 44, 17, 25, 123},
-                checkKeyN[15] = {113, 103, 100, 110, 105, 104};
+  unsigned char checkCipherE1[15] = {7, 84, 112, 31, 87},
+                checkCipherN1[15] = {15, 42, 96, 13, 69, 100},
+                checkCipherE2[15] = {37, 20, 112},
+                checkCipherN2[15] = {7, 19, 30, 55, 94, 108, 122, 16, 35, 53, 76, 95, 124},
+                checkCipherE3[15] = {16, 113, 96},
+                checkCipherN3[15] = {94, 19},
+                checkCipherE4[15] = {19, 32, 63, 121, 27, 82, 119},
+                checkCipherN4[15] = {0, 74, 90, 102, 8, 51, 66, 92},
+                checkCipherE5[15] = {5, 116, 16, 49, 69, 101},
+                checkCipherN5[15] = {47, 57, 79},
+                checkKeyE1[15] = {77, 44, 17, 25, 123},
+                checkKeyN1[15] = {113, 103, 100, 110, 105, 104},
+                checkKeyE2[15] = {15, 92, 6},
+                checkKeyN2[15] = {50, 109, 101, 4, 126, 33, 78, 124, 85, 67, 90, 84, 48},
+                checkKeyE3[15] = {96, 30, 53},
+                checkKeyN3[15] = {70, 57},
+                checkKeyE4[15] = {118, 49, 58, 71, 64, 38, 87},
+                checkKeyN4[15] = {46, 24, 65, 16, 83, 3, 114, 125},
+                checkKeyE5[15] = {74, 112, 102, 19, 69, 2},
+                checkKeyN5[15] = {10, 11, 127};
   unsigned int i, j;
 
   int matches = 0, total = 0;
+
+  //Cube 1
   for(i = 0; i < 5; i++)
   {
-    if(testCipher[checkCipherE[i]] == testKey[checkKeyE[i]])
+    if(testCipher1[checkCipherE1[i]] == testKey[checkKeyE1[i]])
     {
       matches++;
     }
@@ -231,25 +253,86 @@ void simpleCheckEquations()
   }
   for(i = 0; i < 6; i++)
   {
-    if(testCipher[checkCipherN[i]] != testKey[checkKeyN[i]])
+    if(testCipher1[checkCipherN1[i]] != testKey[checkKeyN1[i]])
     {
       matches++;
     }
     total++;
   }
+
+  //Cube 2
+  for(i = 0; i < 3; i++)
+  {
+    if(testCipher2[checkCipherE2[i]] == testKey[checkKeyE2[i]])
+    {
+      matches++;
+    }
+    total++;
+  }
+  for(i = 0; i < 13; i++)
+  {
+    if(testCipher2[checkCipherN2[i]] != testKey[checkKeyN2[i]])
+    {
+      matches++;
+    }
+    total++;
+  }
+
+  //Cube 3
+  for(i = 0; i < 3; i++)
+  {
+    if(testCipher3[checkCipherE3[i]] == testKey[checkKeyE3[i]])
+    {
+      matches++;
+    }
+    total++;
+  }
+  for(i = 0; i < 2; i++)
+  {
+    if(testCipher3[checkCipherN3[i]] != testKey[checkKeyN3[i]])
+    {
+      matches++;
+    }
+    total++;
+  }
+
+  //Cube 4
+  for(i = 0; i < 7; i++)
+  {
+    if(testCipher4[checkCipherE4[i]] == testKey[checkKeyE4[i]])
+    {
+      matches++;
+    }
+    total++;
+  }
+  for(i = 0; i < 8; i++)
+  {
+    if(testCipher4[checkCipherN4[i]] != testKey[checkKeyN4[i]])
+    {
+      matches++;
+    }
+    total++;
+  }
+
+  //Cube 5
+  for(i = 0; i < 6; i++)
+  {
+    if(testCipher5[checkCipherE5[i]] == testKey[checkKeyE5[i]])
+    {
+      matches++;
+    }
+    total++;
+  }
+  for(i = 0; i < 3; i++)
+  {
+    if(testCipher5[checkCipherN5[i]] != testKey[checkKeyN5[i]])
+    {
+      matches++;
+    }
+    total++;
+  }
+
   printf("Matches %d out of %d\n", matches, total);
-
-  printf("%c %c %c\n", "1", testKey[7], testKey[19]);
-  printf("%c\n", testCipher[91]);
-
-  printf("%c %c %c\n", testKey[17], testKey[68], testKey[116]);
-  printf("%c\n", testCipher[114]);
-
-  printf("%c %c\n", testKey[38], testKey[51]);
-  printf("%c\n", testCipher[71]);
-
-  printf("%c %c %c\n", "1", testKey[80], testKey[122]);
-  printf("%c\n", testCipher[113]);
 }
 
 void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len)
@@ -259,15 +342,17 @@ void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len)
   {
     for(j = 0; j < 8; j++)
     {
-      if((key[i] & (1 << j)) == 0)
+      if((hex[i] & (1 << j)) == 0)
       {
-        //bin[counter] = (unsigned char*)"0";
+        bin[counter] = 0x30;
       }
       else
       {
-        //bin[counter] = (unsigned char*)"1";
+        bin[counter] = 0x31;
       }
+      printf("%c", bin[counter]);
     }
+    printf(" ");
   }
 }
 
@@ -294,22 +379,71 @@ void threadFunction(unsigned char *cubeIndex, unsigned long long counter, unsign
 int main()
 {
   unsigned char input[8192][128];
-  unsigned char cubeIndex[31] = {128, 130, 131, 139, 145, 146, 147, 148, 151,
+  unsigned char cubeIndices1[31] = {128, 130, 131, 139, 145, 146, 147, 148, 151,
                                  155, 158, 160, 161, 163, 164, 165, 185, 186,
                                  189, 190, 193, 196, 205, 212, 220, 225, 229,
-                                 238, 242, 245, 249};
+                                 238, 242, 245, 249},
+                cubeIndices2[31] = {128, 129, 134, 135, 138, 139, 141, 151, 154,
+                                 155, 157, 166, 168, 171, 175, 180, 191, 193,
+                                 198, 202, 203, 206, 209, 214, 216, 222, 223,
+                                 225, 239, 246, 247},
+                cubeIndices3[31] = {128, 129, 130, 132, 137, 142, 152, 153, 155,
+                                 160, 164, 165, 166, 175, 187, 196, 200, 201,
+                                 205, 212, 217, 221, 222, 226, 228, 235, 237,
+                                 242, 243, 246, 252},
+                cubeIndices4[31] = {128, 129, 135, 137, 140, 145, 150, 152, 162,
+                                 163, 164, 166, 170, 175, 179, 181, 186, 187,
+                                 198, 202, 209, 216, 220, 221, 222, 230, 234,
+                                 240, 241, 245, 248},
+                cubeIndices5[31] = {131, 132, 134, 136, 138, 142, 143, 147, 152,
+                                 158, 165, 167, 171, 172, 173, 180, 186, 196,
+                                 206, 208, 213, 214, 217, 219, 226, 233, 235,
+                                 237, 239, 250, 251};
   unsigned char cipher[64] = {0}, sum[16] = {0};
   unsigned int i, j;
 
   std::thread t[THREADS];
 
-  //First results
-  //a0 20 00 81 00 55 00 04 20 20 80 08 01 00 05 20
+  //results
+  //unsigned char res1[16] = {0xa0, 0x20, 0x00, 0x81, 0x00, 0x55, 0x00, 0x04, 0x20, 0x20, 0x80, 0x08, 0x01, 0x00, 0x05, 0x20};
   //00000101 00000100 00000000 10000001 00000000 10101010 00000000 00100000 00000100 00000100 00000001 00010000 10000000 00000000 10100000 00000100
+
+  //unsigned char res2[16] = {0x15, 0x32, 0x29, 0x78, 0x08, 0x12, 0x81, 0x02, 0x48, 0x94, 0x0c, 0xc1, 0x4e, 0x11, 0xa2, 0x1e};
+  //10101000 01001100 10010100 00011110 00010000 01001000 10000001 01000000 00010010 00101001 00110000 10000011 01110010 10001000 01000101 01111000
+
+  //unsigned char res3[16] = {0x00, 0x01, 0x00, 0x48, 0x00, 0x50, 0x08, 0x00, 0x00, 0x44, 0x03, 0x70, 0x28, 0x40, 0x04, 0x30};
+  //00000000 10000000 00000000 00010010 00000000 00001010 00010000 00000000 00000000 00100010 11000000 00001110 00010100 00000010 00100000 00001100
+
+  //unsigned char res4[16] = {0x03, 0x8c, 0xe2, 0x99, 0x85, 0x60, 0xc8, 0x88, 0x81, 0x00, 0x32, 0x3c, 0x4a, 0x86, 0x40, 0x80};
+  //11000000 00110001 01000111 10011001 10100001 00000110 00010011 00010001 10000001 00000000 01001100 00111100 01010010 01100001 00000010 00000001
+
+  //unsigned char res5[16] = {0x04, 0x05, 0x00, 0x00, 0x02, 0xc0, 0x29, 0x22, 0x80, 0x02, 0x01, 0x08, 0x90, 0x40, 0x8b, 0x00};
+  //00100000 10100000 00000000 00000000 01000000 00000011 10010100 01000100 00000001 01000000 10000000 00010000 00001001 00000010 11010001 00000000
+
+  //Possible key recover bits
+  // 77, 113, 103,  44, 100,  17, 110, 25,
+  //105, 123, 104,  50, 109, 101,  15,  4,
+  //126,  33,  78, 124,  92,  85,  67, 90,
+  // 84,   6,  48,  96,  70,  30,  57, 53,
+  // 46, 118,  49,  58,  24,  65,  16, 71,
+  // 83,  64,   3, 114,  38, 125,  87, 74,
+  // 10,  11, 127, 102,  19,  69,   2
+
+  //  2   3   4   6  10  11  15  16  17  19  24  25  30  33
+  // 38  44  46  48  49  50  53  57  58  64  65  67  69  70
+  // 71  74  77  78  83  84  85  87  90  92  96 100 101 102
+  //103 104 105 109 110 113 114 118 123 124 125 126 127
+
   //Key
   //00000000 10000000 01000000 11000000 00100000 10100000 01100000 11100000 00010000 10010000 01010000 11010000 00110000 10110000 01110000 11110000
 
   srand(time(NULL));
+
+  //unsigned char bin[16*8];
+  //hexToBinReadable(res5, bin, 16);
+  simpleCheckEquations();
+
+  exit(0);
 
   /*keccakF("Keccak-512 Test Hash", 20, cipher, 64);
   printf("\n\nOutput\n");
@@ -323,7 +457,7 @@ int main()
     unsigned char thres[THREADS][16];
     for(j = 0; j < THREADS; j++)
     {
-        t[j] = std::thread(threadFunction, cubeIndex, counter, thres[j]);
+        t[j] = std::thread(threadFunction, cubeIndices5, counter, thres[j]);
         counter += 8192;
     }
 
