@@ -11,6 +11,8 @@
 #define KEY_SIZE 16
 #define N_THREADS 8
 void printHexMessage(unsigned char hash[], int len);
+void xorCipher(unsigned char part1[], unsigned char part2[], int len);
+void keccakF(const uint8_t *in, int inlen, uint8_t *md, int mdlen);
 
 using namespace std;
 
@@ -49,7 +51,7 @@ void generateCubeWithKey(byte *key, uint cubeIndices[], int variables, unsigned 
     }
 }
 
-void randomCube(vector<uint> &indices, uint dim, uint min, uint max) {
+/*void randomCube(vector<uint> &indices, uint dim, uint min, uint max) {
     uint i = 0, randi;
 
     if (max - min < dim)
@@ -64,7 +66,7 @@ void randomCube(vector<uint> &indices, uint dim, uint min, uint max) {
     }
 
     sort(indices.begin(), indices.end());
-}
+}*/
 
 void sumPartial(byte key[], vector<uint> indices, uint start, uint step, byte result[]) {
     byte partOfCube[step][128];
@@ -113,7 +115,7 @@ void computeCoefficients(vector<uint> &indices, byte coefficients[][16]) {
     }
 }
 
-int main() {
+/*int main() {
     srand(time(NULL));
     vector<uint> cubeIndices;
     byte coefficients[129][16] = {0};
@@ -143,4 +145,4 @@ int main() {
         cout << endl;
     }
     return 0;
-}
+}*/
