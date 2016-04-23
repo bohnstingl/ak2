@@ -51,24 +51,21 @@ void Cube::deriveParallel(uint64_t key[], uint64_t result[]) {
     }
 }
 
-void Cube::randomCube(uint dim, uint min, uint max)
-{
-  uint i = 0, randi;
+void Cube::randomCube(uint dim, uint min, uint max) {
+    uint i = 0, randi;
 
-  clear();
-  if (max - min < dim)
-    throw -1;
+    if (max - min < dim)
+        throw -1;
 
-  for (; i < dim; i++)
-  {
-    randi = rand() % (max - min) + min;
-    if (find(begin(), end(), randi) == end())
-      push_back(randi);
-    else
-      i--;
-  }
+    for (; i < dim; i ++) {
+        randi = rand() % (max - min) + min;
+        if (find(begin(), end(), randi) == end())
+            push_back(randi);
+        else
+            i --;
+    }
 
-  sort(begin(), end());
+    sort(begin(), end());
 }
 
 void Cube::printVariables() {
