@@ -20,7 +20,7 @@ using namespace std;
 
 typedef unsigned int uint;
 
-typedef pair<uint64_t, uint64_t> CubeRange;
+//typedef pair<uint64_t, uint64_t> CubeRange;
 /*class Cube: public vector<uint>
 {
 public:

@@ -23,7 +23,7 @@ const int keccakf_rotc[24] = { 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14, 27,
 const int keccakf_piln[24] = { 10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15,
     23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1 };
 
-unsigned char key[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+unsigned char globalKey[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
     0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
 // update the state with given number of rounds
@@ -107,27 +107,6 @@ int keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen)
   return 0;
 }
 
-void generateRandomData2(unsigned char input[], int amount)
-{
-  int remain = amount;
-  while (remain > 0)
-  {
-    int toCopy = 0;
-    if (remain >= 8)
-    {
-      toCopy = 8;
-    }
-    else
-    {
-      toCopy = remain;
-    }
-    uint64_t in = rand();
-    in = (in << 32) | rand();
-    memcpy(input + (amount - remain), &in, toCopy * sizeof(unsigned char));
-    remain -= toCopy;
-  }
-}
-
 void printHexMessage(unsigned char hash[], int len)
 {
   int i;
@@ -146,59 +125,14 @@ void keccakF(const uint8_t *in, int inlen, uint8_t *md, int mdlen)
   uint8_t temp[200] = {0};
   int i, rsiz, rsizw;
 
-  if((inlen % 8) == 0)
-  {
-    rsizw = inlen / 8;
-  }
-  else
-  {
-    rsizw = (inlen / 8) + 1;
-  }
-
-  rsizw = 21; //9
-  rsiz = 168; //72
-  memset(st, 0, sizeof(st));
-
   memcpy(temp, in, inlen);
-  temp[inlen++] = 1;
-  memset(temp + inlen, 0, rsiz - inlen);
-  temp[rsiz - 1] |= 0x80;
 
-  for (i = 0; i < rsizw; i++)
+  for (i = 0; i < 16; i++)
     st[i] ^= ((uint64_t *) temp)[i];
 
   keccakf(st, KECCAK_ROUNDS);
 
   memcpy((char*)md, (char*)st, mdlen * sizeof(char));
-  //printHexMessage(md, 16);
-}
-
-void generateCube(unsigned char cubeIndices[], int variables, unsigned char output[][128], int amount, unsigned long long startIndex)
-{
-  unsigned char c = 0x00;
-  unsigned int i, j;
-
-  for (i = 0; i < amount; i++)
-  {
-    //Copy the key into the message
-    memcpy(output[i], key, 16);
-
-    //Initialise the constant message
-    memset(output[i] + 16, c, 112);
-
-    for(j = 0; j < variables; j++)
-    {
-      //Split counter into variables bits
-      if(((startIndex + i) & (1 << j)) == 0)
-      {
-        output[i][cubeIndices[j] / 8] &= ~(1 << (cubeIndices[j] % 8));
-      }
-      else
-      {
-        output[i][cubeIndices[j] / 8] |= 1 << (cubeIndices[j] % 8);
-      }
-    }
-  }
 }
 
 void xorCipher(unsigned char part1[], unsigned char part2[], int len)
@@ -208,131 +142,6 @@ void xorCipher(unsigned char part1[], unsigned char part2[], int len)
   {
     part1[i] = part1[i] ^ part2[i];
   }
-}
-
-void simpleCheckEquations()
-{
-  unsigned char testCipher1[1600] = "00000101000001000000000010000001000000001010101000000000001000000000010000000100000000010001000010000000000000001010000000000100",
-                testCipher2[1600] = "10101000010011001001010000011110000100000100100010000001010000000001001000101001001100001000001101110010100010000100010101111000",
-                testCipher3[1600] = "00000000100000000000000000010010000000000000101000010000000000000000000000100010110000000000111000010100000000100010000000001100",
-                testCipher4[1600] = "11000000001100010100011110011001101000010000011000010011000100011000000100000000010011000011110001010010011000010000001000000001",
-                testCipher5[1600] = "00100000101000000000000000000000010000000000001110010100010001000000000101000000100000000001000000001001000000101101000100000000",
-                   testKey[1600] = "00000000100000000100000011000000001000001010000001100000111000000001000010010000010100001101000000110000101100000111000011110000";
-  unsigned char checkCipherE1[15] = {7, 84, 112, 31, 87},
-                checkCipherN1[15] = {15, 42, 96, 13, 69, 100},
-                checkCipherE2[15] = {37, 20, 112},
-                checkCipherN2[15] = {7, 19, 30, 55, 94, 108, 122, 16, 35, 53, 76, 95, 124},
-                checkCipherE3[15] = {16, 113, 96},
-                checkCipherN3[15] = {94, 19},
-                checkCipherE4[15] = {19, 32, 63, 121, 27, 82, 119},
-                checkCipherN4[15] = {0, 74, 90, 102, 8, 51, 66, 92},
-                checkCipherE5[15] = {5, 116, 16, 49, 69, 101},
-                checkCipherN5[15] = {47, 57, 79},
-                checkKeyE1[15] = {77, 44, 17, 25, 123},
-                checkKeyN1[15] = {113, 103, 100, 110, 105, 104},
-                checkKeyE2[15] = {15, 92, 6},
-                checkKeyN2[15] = {50, 109, 101, 4, 126, 33, 78, 124, 85, 67, 90, 84, 48},
-                checkKeyE3[15] = {96, 30, 53},
-                checkKeyN3[15] = {70, 57},
-                checkKeyE4[15] = {118, 49, 58, 71, 64, 38, 87},
-                checkKeyN4[15] = {46, 24, 65, 16, 83, 3, 114, 125},
-                checkKeyE5[15] = {74, 112, 102, 19, 69, 2},
-                checkKeyN5[15] = {10, 11, 127};
-  unsigned int i, j;
-
-  int matches = 0, total = 0;
-
-  //Cube 1
-  for(i = 0; i < 5; i++)
-  {
-    if(testCipher1[checkCipherE1[i]] == testKey[checkKeyE1[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-  for(i = 0; i < 6; i++)
-  {
-    if(testCipher1[checkCipherN1[i]] != testKey[checkKeyN1[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-
-  //Cube 2
-  for(i = 0; i < 3; i++)
-  {
-    if(testCipher2[checkCipherE2[i]] == testKey[checkKeyE2[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-  for(i = 0; i < 13; i++)
-  {
-    if(testCipher2[checkCipherN2[i]] != testKey[checkKeyN2[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-
-  //Cube 3
-  for(i = 0; i < 3; i++)
-  {
-    if(testCipher3[checkCipherE3[i]] == testKey[checkKeyE3[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-  for(i = 0; i < 2; i++)
-  {
-    if(testCipher3[checkCipherN3[i]] != testKey[checkKeyN3[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-
-  //Cube 4
-  for(i = 0; i < 7; i++)
-  {
-    if(testCipher4[checkCipherE4[i]] == testKey[checkKeyE4[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-  for(i = 0; i < 8; i++)
-  {
-    if(testCipher4[checkCipherN4[i]] != testKey[checkKeyN4[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-
-  //Cube 5
-  for(i = 0; i < 6; i++)
-  {
-    if(testCipher5[checkCipherE5[i]] == testKey[checkKeyE5[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-  for(i = 0; i < 3; i++)
-  {
-    if(testCipher5[checkCipherN5[i]] != testKey[checkKeyN5[i]])
-    {
-      matches++;
-    }
-    total++;
-  }
-
-  printf("Matches %d out of %d\n", matches, total);
 }
 
 void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len)
@@ -356,27 +165,7 @@ void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len)
   }
 }
 
-void threadFunction(unsigned char *cubeIndex, unsigned long long counter, unsigned char *res)
-{
-  unsigned char input[8192][128];
-  unsigned int i, j;
-  unsigned char cipher[64] = {0}, sum[16] = {0};
-
-  //Generate a part of the cube
-  generateCube(cubeIndex, 31, input, 8192, counter);
-
-  for(j = 0; j < 8192; j++)
-  {
-    //Calculate the MAC of the message and xor it with others
-    keccakF(input[j], 128, cipher, 16);
-    xorCipher(sum, cipher, 16);
-  }
-
-  //Copy the final results
-  memcpy(res, sum, 16);
-}
-
-int main()
+/*int main()
 {
   unsigned char input[8192][128];
   unsigned char cubeIndices1[31] = {128, 130, 131, 139, 145, 146, 147, 148, 151,
@@ -445,10 +234,6 @@ int main()
 
   exit(0);
 
-  /*keccakF("Keccak-512 Test Hash", 20, cipher, 64);
-  printf("\n\nOutput\n");
-  printHexMessage(cipher, 16);*/
-
   unsigned long long counter = 0;
 
   //Caution. Do not count till the end. Just count to 0xffffffff
@@ -467,27 +252,10 @@ int main()
         xorCipher(sum, thres[j], 16);
         //printHexMessage(sum, 16);
     }
-    /*//Generate a part of the cube
-    generateCube(cubeIndex, 31, input, 8192, counter);
-    counter += 8192;
-
-    for(j = 0; j < 8192; j++)
-    {
-      //Calculate the MAC of the message and xor it with others
-      keccakF(input[j], 128, cipher, 16);
-      xor(sum, cipher, 16);
-    }
-    if(((i + 1) % 5000) == 0)
-        printf("It: %6d\n", i);*/
   }
 
   printf("finished computation\n");
   printHexMessage(sum, 16);
 
-  //Keccak(1024, 576, input, 128, 0, output, 16);
-  /*keccak("Keccak-512 Test Hash", 20, output, 64);
-  printf("\n\nOutput\n");
-  printHexMessage(output, 64);*/
-
   return 0;
-}
+}*/

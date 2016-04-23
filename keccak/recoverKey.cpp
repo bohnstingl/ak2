@@ -3,6 +3,9 @@
 #include <vector>
 #include <thread>
 #include <algorithm>
+#include <fstream>
+#include <string>
+#include <map>
 #include "keccak.h"
 #include "cube.h"
 
@@ -18,111 +21,156 @@ typedef unsigned int uint;
 typedef pair<Cube::cubeIterator, Cube::cubeIterator> CubeRange;
 
 void printHexMessage(unsigned char hash[], int len);
-void printCoefficientsReadable(uint64_t coefficients[129][2]);
+void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len);
+extern unsigned char globalKey[16];
 
-/*void Cube::sumRange(uint64_t result[], uint64_t key[], CubeRange range)
+typedef struct sol
 {
-  cubeIterator it = range.first;
-  uint64_t st[25];
+  map<uint, uint> equations;
+  map<uint, uint> constants;
+  uint cubeVars[31] = {};
+};
 
-  for (; it != range.second; ++it)
-  {
-    memcpy(st, *it, 25 * sizeof(uint64_t));
-    memcpy(st, key, 2 * sizeof(uint64_t));
+unsigned char recoveredKey[16];
+sol solutions[1000];
+int solIndex = 0;
 
-    keccakf(st, keccak_rounds_);
-    result[0] ^= st[0];
-    result[1] ^= st[1];
-  }
-}
-
-void Cube::deriveParallel(uint64_t key[], uint64_t result[])
+void readEquations()
 {
-  uint64_t tempResults[nThreads][2] = { 0 };
-  //uint64_t tempResults[nThreads][5] = { 0 }; 320 bit Tag
-
-  uint th;
-  vector<thread *> threads;
-
-  for (th = 0; th < nThreads; th++)
+  string line;
+  ifstream cubes ("/home/thomas/workspace/AKCpp/src/cubes4.txt");
+  char cubeIndexLine = 0;
+  if (cubes.is_open())
   {
-    CubeRange range = getEqualCubeRange(th, nThreads);
-    thread *newThread = new thread(&Cube::sumRange, this, tempResults[th], key, range);
-    threads.push_back(newThread);
-  }
-
-  for (th = 0; th < nThreads; th++)
-  {
-    threads[th]->join();
-    delete threads[th];
-
-    result[0] ^= tempResults[th][0];
-    result[1] ^= tempResults[th][1];
-  }
-}
-
-void printCoefficientsMachine(uint64_t coefficients[129][2])
-{
-  for (uint i = 0; i < 128; i++)
-  {
-    cout << "" << i << ":" << (IS_ST_BIT(coefficients[0], i) != 0);
-    for (uint key_bit = 0; key_bit < 128; key_bit++)
+    while(getline(cubes,line))
     {
-      if (IS_ST_BIT(coefficients[key_bit + 1], i))
-        cout << ";" << key_bit << "";
+      if(line.compare("---------------------------------------------------------") == 0)
+      {
+        solIndex++;
+        cubeIndexLine = 0;
+        continue;
+      }
+
+      if(!cubeIndexLine)
+      {
+        char *ptr;
+        ptr = strtok((char*)line.c_str(), " ");
+        ptr = strtok(NULL, " ");
+        char coeffNr = 0;
+        while((ptr = strtok(NULL, " ")) && ptr != NULL && strcmp(ptr, "\r") != 0 && strcmp(ptr, "\n") != 0)
+        {
+          sscanf(ptr, "%uc", &solutions[solIndex].cubeVars[coeffNr]);
+          coeffNr++;
+        }
+        cubeIndexLine++;
+      }
+      else
+      {
+        char *ptr;
+        char counter = 0, simple = 0;
+        uint outputBit, keyBit;
+        ptr = strtok((char*)line.c_str(), ":");
+        sscanf(ptr, "%uc", &outputBit);
+        ptr = strtok(NULL, ";");
+
+        uint val, constant;
+        sscanf(ptr, "%uc", &constant);
+        while((ptr = strtok(NULL, ";")) && ptr != NULL && strcmp(ptr, "\r") != 0 && strcmp(ptr, "\n") != 0)
+        {
+          if(counter > 0)
+          {
+            simple = 0;
+            break;
+          }
+          sscanf(ptr, "%uc", &val);
+
+          keyBit = val;
+          counter++;
+          simple = 1;
+        }
+
+        if(simple && solutions[solIndex].equations.count(keyBit) == 0)
+        {
+          solutions[solIndex].equations.insert(pair<uint, uint>(keyBit, outputBit));
+          solutions[solIndex].constants.insert(pair<uint, uint>(keyBit, constant));
+        }
+      }
     }
-    cout << endl;
+    cubes.close();
   }
-}*/
+}
+
+void recoverKey(unsigned char output[], int solutionIndex)
+{
+  //Iterate over the equations
+  for(auto eq: solutions[solutionIndex].equations)
+  {
+    uint con = solutions[solutionIndex].constants.find(eq.first)->second;
+
+    uint val;
+    if(output[eq.second] == 48)
+      val = 0;
+    else
+      val = 1;
+
+    uint res = con ^ val;
+    if(res)
+      recoveredKey[eq.first / 8] |= 1 << (eq.first % 8);
+    else
+      recoveredKey[eq.first / 8] &= ~(1 << (eq.first % 8));
+  }
+
+  printHexMessage(recoveredKey, 16);
+}
 
 int main()
 {
-  unsigned char key1[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-                            0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
-  Cube cube(5);
-  uint cube_vars[] = {128, 130, 131, 139, 145, 146, 147, 148, 151,
-                      155, 158, 160, 161, 163, 164, 165, 185, 186,
-                      189, 190, 193, 196, 205, 212, 220, 225, 229,
-                      238, 242, 245, 249};
-  cube.addArray(cube_vars, 31);
-
   srand(time(NULL));
-
-  uint64_t sum[2] = { 0 };
   uint64_t key2[2] = { 0 };
+
   uint64_t coefficients[129][2];
-  memset(coefficients, 0, 129 * 16 * 2);
+  memset(coefficients, 0, 129 * 8 * 2);
+  memset(recoveredKey, 0, 16);
 
-  //Manually set the coefficients
-  coefficients[0][1] |= ((uint64_t)1 << 49) | ((uint64_t) 1 << 39)
-                     |  ((uint64_t)1 << 36) | ((uint64_t) 1 << 46)
-                     |  ((uint64_t)1 << 41) | ((uint64_t) 1 << 40);
-  coefficients[78][0] |= ((uint64_t)1 << 7);
-  coefficients[114][0] |= ((uint64_t)1 << 15);
-  coefficients[104][0] |= ((uint64_t)1 << 42);
-  coefficients[45][1] |= ((uint64_t)1 << 20);
-  coefficients[101][1] |= ((uint64_t)1 << 32);
-  coefficients[18][1] |= ((uint64_t)1 << 48);
-  coefficients[111][0] |= ((uint64_t)1 << 13);
-  coefficients[26][0] |= ((uint64_t)1 << 31);
-  coefficients[106][1] |= ((uint64_t)1 << 5);
-  coefficients[124][1] |= ((uint64_t)1 << 23);
-  coefficients[105][1] |= ((uint64_t)1 << 36);
+  //Read the file with the cubes inside
+  readEquations();
 
-  printCoefficientsReadable(coefficients);
+  //Iterate over the solutions.
+  //1.) Compute the output of the certain cube
+  //2.) Use equations and constants to recover key bits
 
-  uint64_t res[2];
-  memset(res, 0, 16);
+  for(int i = 0; i < solIndex; i++)
+  {
+    Cube cube(5);
+    cube.addArray(solutions[i].cubeVars, 31);
 
-  unsigned char msg[16];
+    uint64_t res[2];
+    memset(res, 0, 16);
+    unsigned char msg[16];
+    memcpy(key2, globalKey, 16);
 
-  //coefficients[]
+    //cube.deriveParallel(key2, res);
 
-  memcpy(key2, key1, 16);
+    memcpy(msg, res, 16);
+    printHexMessage(msg, 16);
+    unsigned char binary[129];
+    hexToBinReadable(msg, binary, 16);
+    recoverKey(binary, i);
 
-  cube.deriveParallel(key2, res);
+    /*unsigned char binary2[129] = "10101000010011001001010000011110000100000100100010000001010000000001001000101001001100001000001101110010100010000100010101111000";
+    recoverKey(binary2, 1);
+    unsigned char binary3[129] = "00000000100000000000000000010010000000000000101000010000000000000000000000100010110000000000111000010100000000100010000000001100";
+    recoverKey(binary3, 2);
+    unsigned char binary4[129] = "11000000001100010100011110011001101000010000011000010011000100011000000100000000010011000011110001010010011000010000001000000001";
+    recoverKey(binary4, 3);
+    unsigned char binary5[129] = "00100000101000000000000000000000010000000000001110010100010001000000000101000000100000000001000000001001000000101101000100000000";
+    recoverKey(binary5, 4);
+    unsigned char binary6[129] = "00000000010010000000111000010000000000000000000001000101000010000010100010000001000000000101000011010000000000010000000010000010";
+    recoverKey(binary6, 5);
+    unsigned char binary7[129] = "00000000000100001101000011110000100000000000001000000000010010000001000000000100010000010000001000000101000000000000000000000011";
+    recoverKey(binary7, 6);
+    exit(0);*/
+  }
 
-  memcpy(msg, res, 16);
-  printHexMessage(msg, 16);
   return 0;
 }
