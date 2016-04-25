@@ -26,6 +26,9 @@ const int keccakf_piln[24] = { 10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15,
 unsigned char globalKey[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
     0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
+//unsigned char globalKey[16] = { 0x12, 0x71, 0xe1, 0xfa, 0x44, 0x29, 0x1f, 0xff,
+//                                0x63, 0x87, 0xaa, 0xcb, 0xee, 0x99, 0xec, 0x84};
+
 // update the state with given number of rounds
 
 void keccakf(uint64_t st[25], int rounds)
@@ -147,7 +150,7 @@ void xorCipher(unsigned char part1[], unsigned char part2[], int len)
 void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len)
 {
   int counter = 0, i, j;
-  for(i = 0; i < 16; i++)
+  for(i = 0; i < len; i++)
   {
     for(j = 0; j < 8; j++)
     {
@@ -160,9 +163,10 @@ void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len)
         bin[counter] = 0x31;
       }
       printf("%c", bin[counter]);
+      counter++;
     }
-    printf(" ");
   }
+  printf("\n");
 }
 
 /*int main()
