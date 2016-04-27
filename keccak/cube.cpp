@@ -5,6 +5,8 @@
 
 using namespace std;
 
+uint Cube::nThreads = 8;
+
 void Cube::sumRange(uint64_t result[], uint64_t key[], CubeRange range) {
     cubeIterator it = range.first;
     uint64_t st[25];

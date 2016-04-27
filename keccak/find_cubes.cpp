@@ -44,15 +44,18 @@ int main()
   uint loop_var;
   bool found;
 
-  for (uint amount = 0; amount < 1000; amount++)
+  for (uint amount = 0; amount < 2000; amount++)
   {
     Cube cube(4);
     cube.randomCube((1 << cube.keccak_rounds_) - 1, 128, 256);
     //cube.push_back(128);
+    //uint ind_arr[] = { 136, 138, 142, 145, 164, 166, 180, 194, 195, 197, 202, 206, 213, 232, 253 };
+    //for (uint ll = 0; ll < 15; ll ++)
+    //  cube.push_back(ind_arr[ll]);
     uint64_t coefficients[129][2] = { 0 };
-    memset(coefficients, 0, 129 * 2 * 8);
     do
     {
+      memset(coefficients, 0, 129 * 2 * 8);
       //cout << "Trying cube..." << endl;
       //cube.printVariables();
 
@@ -87,10 +90,11 @@ int main()
         break;
 
       cube.pop_back();
-    } while (cube.size() >= 13); // 1
+    } while (cube.size() >= 12);//15); // 1
 
     if (found)
     {
+      //cout << cube.size() << endl;
       cube.printVariables();
       //printCoefficientsReadable(coefficients);
       printCoefficientsMachine(coefficients);

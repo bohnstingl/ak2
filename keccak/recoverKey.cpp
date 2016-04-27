@@ -40,7 +40,7 @@ void readEquations()
 {
   string line;
   //ifstream cubes ("/home/thomas/workspace/AKCpp/src/cubes4_manually.txt");
-  ifstream cubes ("/home/thomas/workspace/AKCpp/src/cubes1.txt");
+  ifstream cubes ("cubes.txt");
   //ifstream cubes ("/home/thomas/workspace/AKCpp/src/cubes5_manually.txt");
   vector<uint> keyBits;
   char cubeIndexLine = 0;
@@ -151,7 +151,7 @@ int main()
 
   for(int i = 0; i < solIndex; i++)
   {
-    Cube cube(2);
+    Cube cube(4);
     cube.addArray(solutions[i].cubeVars, solutions[i].cubeVarsLen);
     //cube.addArray(cubeIndices1, 13);
 

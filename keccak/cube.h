@@ -109,8 +109,8 @@ public:
   }
   uint keccak_rounds_;
 
+  static uint nThreads;
 private:
-  static const uint nThreads = 2;
 };
 
 typedef std::pair<Cube::cubeIterator, Cube::cubeIterator> CubeRange;
