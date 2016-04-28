@@ -234,10 +234,67 @@ void testCoefficientComputation() {
   }
 }
 
+void testKeyBitCorrelation(uint64_t coefficients[][2], vector<uint> indices) {
+  
+  uint64_t st[25];
+  uint64_t key[2];
+  for (int kb = -1; kb < 128; kb ++) {
+    memset(key, 0, 16);
+    if (kb >= 0)
+      ST_SET_BIT(key, kb);
+    
+    for (int j = 0; j < 1; j ++) {
+      uint64_t res[2];
+      memset(res, 0, 16);
+
+      for (uint64_t i = 0; i < ((uint64_t) 1 << indices.size()); i ++) {
+        memset(st, 0, 25 * 8);
+        memcpy(st, key, 16);
+
+        mapVarToStateBits(st, indices, i);
+        keccakf(st, 4);
+
+        res[0] ^= st[0];
+        res[1] ^= st[1];
+      }
+
+      res[0] ^= coefficients[0][0];
+      res[1] ^= coefficients[0][1];
+
+      if (kb >= 0) {
+        res[0] ^= coefficients[kb + 1][0];
+        res[1] ^= coefficients[kb + 1][1];
+      }
+      
+      if (res[0] || res[1]) {
+        cout << "false at " << kb << endl;
+        print64(coefficients[kb], 2);
+        cout << "diff" << endl;
+        print64(res, 2);
+      }
+    }
+  }
+}
+
 int main() {
   srand(time(NULL));
   
-  testCoefficientComputation();
+  //uint ind_arr[] = { 136, 138, 142, 145, 164, 166, 180, 194, 195, 197, 202, 206, 213, 232, 253 }; 
+  //vector<uint> indices(ind_arr, ind_arr + 15);
+  uint ind_arr[] = { 131, 132, 136, 141, 152, 153, 160, 166, 184, 189, 201, 207, 210, 245}; 
+  vector<uint> indices(ind_arr, ind_arr + 14);
+  
+  uint64_t coefficients[129][2];
+  memset(coefficients, 0, 129 * 2 * 8);
+  
+  cubeCoefficients(coefficients, indices, 4);
+
+  testKeyBitCorrelation(coefficients, indices);
+
+  for (int i = 0; i < 129; i ++) {
+    cout << "key bit: " << i - 1 << endl;    
+    print64(coefficients[i], 2);
+  }
   
   return 0;
 }
