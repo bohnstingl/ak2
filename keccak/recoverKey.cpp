@@ -22,7 +22,6 @@ typedef pair<Cube::cubeIterator, Cube::cubeIterator> CubeRange;
 
 void printHexMessage(unsigned char hash[], int len);
 void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len);
-extern unsigned char globalKey[16];
 
 typedef struct sol
 {
@@ -33,15 +32,20 @@ typedef struct sol
 };
 
 unsigned char recoveredKey[16];
-sol solutions[1000];
+sol solutions[100000];
+vector<int> keyBitSolIndices;
 int solIndex = 0;
+
+void fillRandomKey(uint64_t st[])
+{
+  for (int i = 0; i < 4; i++)
+    ((uint32_t *) st)[i] = rand();
+}
 
 void readEquations()
 {
   string line;
-  //ifstream cubes ("/home/thomas/workspace/AKCpp/src/cubes4_manually.txt");
-  ifstream cubes ("cubes.txt");
-  //ifstream cubes ("/home/thomas/workspace/AKCpp/src/cubes5_manually.txt");
+  ifstream cubes ("./cubes.txt");
   vector<uint> keyBits;
   char cubeIndexLine = 0;
   if (cubes.is_open())
@@ -94,12 +98,13 @@ void readEquations()
           simple = 1;
         }
 
-        vector<uint>::iterator it = find(keyBits.begin(), keyBits.end(), keyBit);
-        if(simple && it == keyBits.end())
+        if(simple && find(keyBits.begin(), keyBits.end(), keyBit) == keyBits.end())
         {
           solutions[solIndex].equations.insert(pair<uint, uint>(keyBit, outputBit));
           solutions[solIndex].constants.insert(pair<uint, uint>(keyBit, constant));
           keyBits.push_back(keyBit);
+          if(find(keyBitSolIndices.begin(), keyBitSolIndices.end(), solIndex) == keyBitSolIndices.end())
+            keyBitSolIndices.push_back(solIndex);
         }
       }
     }
@@ -120,19 +125,13 @@ void recoverKey(uint64_t output[], int solutionIndex)
       val = 1;
     else
       val = 0;
-    /*if(output[eq.second] == 0x30)
-      val = 0;
-    else
-      val = 1;*/
 
     uint res = con ^ val;
     if(res)
       recoveredKey[eq.first / 8] |= 1 << (eq.first % 8);
-    //else
-    //  recoveredKey[eq.first / 8] &= ~(1 << (eq.first % 8));
+    else
+      recoveredKey[eq.first / 8] &= ~(1 << (eq.first % 8));
   }
-
-  //printHexMessage(recoveredKey, 16);
 }
 
 int main()
@@ -140,7 +139,7 @@ int main()
   srand(time(NULL));
   uint64_t key2[2];
   memset(recoveredKey, 0, 16);
-  memcpy(key2, globalKey, 16);
+  memset(key2, 0, 16);
 
   //Read the file with the cubes inside
   readEquations();
@@ -149,24 +148,44 @@ int main()
   //1.) Compute the output of the certain cube
   //2.) Use equations and constants to recover key bits
 
-  for(int i = 0; i < solIndex; i++)
+  for(int k = 0; k < 100; k++)
   {
-    Cube cube(4);
-    cube.addArray(solutions[i].cubeVars, solutions[i].cubeVarsLen);
-    //cube.addArray(cubeIndices1, 13);
+    fillRandomKey(key2);
+    memset(recoveredKey, 0, 16);
 
-    uint64_t res[2];
-    memcpy(key2, globalKey, 16);
-    memset(res, 0, 16);
+    for(unsigned int i = 0; i < keyBitSolIndices.size(); i++)
+    {
+      int index = keyBitSolIndices.at(i);
+      Cube cube(4);
+      cube.addArray(solutions[index].cubeVars, solutions[index].cubeVarsLen);
 
-    cube.deriveParallel(key2, res);
-    //printHexMessage((unsigned char*)res, 16);
+      uint64_t res[2];
+      memset(res, 0, 16);
 
-    recoverKey(res, i);
-    //printf("-----\n");
+      cube.deriveParallel(key2, res);
+
+      recoverKey(res, index, key2);
+    }
+
+    if(memcmp(recoveredKey, key2, 16) != 0)
+    {
+      printf("Key recovery failed!\n");
+      unsigned char bin[129];
+      printHexMessage(recoveredKey, 16);
+      printHexMessage((unsigned char*)key2, 16);
+      hexToBinReadable(recoveredKey, bin, 16);
+      hexToBinReadable((unsigned char*)key2, bin, 16);
+      exit(0);
+    }
+    else
+    {
+      printHexMessage(recoveredKey, 16);
+      printHexMessage((unsigned char*)key2, 16);
+      printf("Key recovery successful %d / 100\n", k + 1);
+    }
   }
 
-  printHexMessage(recoveredKey, 16);
+  printf("Programm ended successfully!\n");
 
   return 0;
 }
