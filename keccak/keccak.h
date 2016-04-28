@@ -18,6 +18,11 @@
 // compute a keccak hash (md) of given byte length from "in"
 int keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen);
 
+void chi(uint64_t st[25]);
+void inverseChi(uint64_t st[25]);
+void thetaRhoPi(uint64_t st[25]);
+void inverseIotaChi(uint64_t st[25], int round);
+
 // update the state
 void keccakf(uint64_t st[25], int norounds);
 

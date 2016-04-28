@@ -161,7 +161,7 @@ int main()
   uint loop_var;
   bool found, linear = true;
 
-  for (uint amount = 0; amount < 1000; amount++)
+  for (uint amount = 0; amount < 5000; amount++)
   {
     Cube cube(4);
     cube.randomCube((1 << cube.keccak_rounds_) - 1, 128, 256);

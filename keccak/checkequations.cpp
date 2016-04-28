@@ -37,7 +37,7 @@ int wrongCounter = 0;
 void readEquations2()
 {
   string line;
-  ifstream cubes ("/home/thomas/workspace/AKCpp/src/cubes.txt");
+  ifstream cubes ("bin/cubes4rounds2.txt");
   vector<uint> keyBits;
   char cubeIndexLine = 0;
   if (cubes.is_open())
@@ -134,6 +134,15 @@ void fillRandomKey(uint64_t st[])
 {
   for (int i = 0; i < 4; i++)
     ((uint32_t *) st)[i] = rand();
+}
+
+void mapVarToStateBits(uint64_t st[], vector<uint> indices, uint count) {
+  for (int i = 0; i < indices.size(); i ++) {
+    if (count & (1 << i))
+      ST_SET_BIT(st, indices[i]);
+    else
+      ST_CLR_BIT(st, indices[i]);
+  }
 }
 
 int main()

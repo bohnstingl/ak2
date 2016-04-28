@@ -276,9 +276,7 @@ void testKeyBitCorrelation(uint64_t coefficients[][2], vector<uint> indices) {
   }
 }
 
-int main() {
-  srand(time(NULL));
-  
+void checkCoefficients() {
   //uint ind_arr[] = { 136, 138, 142, 145, 164, 166, 180, 194, 195, 197, 202, 206, 213, 232, 253 }; 
   //vector<uint> indices(ind_arr, ind_arr + 15);
   uint ind_arr[] = { 131, 132, 136, 141, 152, 153, 160, 166, 184, 189, 201, 207, 210, 245}; 
@@ -294,6 +292,23 @@ int main() {
   for (int i = 0; i < 129; i ++) {
     cout << "key bit: " << i - 1 << endl;    
     print64(coefficients[i], 2);
+  }
+}
+
+int main() {
+  srand(time(NULL));
+  
+  uint64_t st[25], temp[25];
+  
+  for (uint i = 0; i < ((uint) 1 << 24); i ++) {
+    fillRandom(st);
+    memcpy(temp, st, 25 * 8);
+    
+    chi(st);
+    inverseChi(st);
+    
+    if (memcmp(temp, st, 25 * 8) != 0)
+      cout << "ERRR" << endl;
   }
   
   return 0;

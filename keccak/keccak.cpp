@@ -73,6 +73,64 @@ void keccakf(uint64_t st[25], int rounds)
   }
 }
 
+void thetaRhoPi(uint64_t st[]) {
+  int i, j;
+  uint64_t t, bc[5];
+  
+  // Theta
+  for (i = 0; i < 5; i++)
+    bc[i] = st[i] ^ st[i + 5] ^ st[i + 10] ^ st[i + 15] ^ st[i + 20];
+
+  for (i = 0; i < 5; i++)
+  {
+    t = bc[(i + 4) % 5] ^ ROTL64(bc[(i + 1) % 5], 1);
+    for (j = 0; j < 25; j += 5)
+      st[j + i] ^= t;
+  }
+
+  // Rho Pi
+  t = st[1];
+  for (i = 0; i < 24; i++)
+  {
+    j = keccakf_piln[i];
+    bc[0] = st[j];
+    st[j] = ROTL64(t, keccakf_rotc[i]);
+    t = bc[0];
+  }
+}
+
+void inverseIotaChi(uint64_t st[], int round) {
+  st[0] ^= keccakf_rndc[round];
+  inverseChi(st);
+}
+
+void chi(uint64_t st[])
+{
+  int i, j;
+  uint64_t bc[5];
+  for (j = 0; j < 25; j += 5)
+  {
+    for (i = 0; i < 5; i++)
+      bc[i] = st[j + i];
+    for (i = 0; i < 5; i++)
+      st[j + i] ^= (~bc[(i + 1) % 5]) & bc[(i + 2) % 5];
+  }
+}
+
+void inverseChi(uint64_t st[])
+{
+  uint64_t row[5];
+  for (int r = 0; r < 25; r += 5) {
+    memcpy(row, st + r, 5 * 8);
+    
+    st[r]     = row[0] ^ row[2] ^ row[4] ^ row[1] & row[2] ^ row[1] & row[4] ^ row[3] & row[4] ^ row[1] & row[3] & row[4];
+    st[r + 1] = row[0] ^ row[1] ^ row[3] ^ row[0] & row[2] ^ row[0] & row[4] ^ row[2] & row[3] ^ row[0] & row[2] & row[4];
+    st[r + 2] = row[1] ^ row[2] ^ row[4] ^ row[0] & row[1] ^ row[1] & row[3] ^ row[3] & row[4] ^ row[0] & row[1] & row[3];
+    st[r + 3] = row[0] ^ row[2] ^ row[3] ^ row[0] & row[4] ^ row[1] & row[2] ^ row[2] & row[4] ^ row[1] & row[2] & row[4];
+    st[r + 4] = row[1] ^ row[3] ^ row[4] ^ row[0] & row[1] ^ row[0] & row[3] ^ row[2] & row[3] ^ row[0] & row[2] & row[3];
+  }
+}
+
 // compute a keccak hash (md) of given byte length from "in"
 
 int keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen)
