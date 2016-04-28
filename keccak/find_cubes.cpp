@@ -90,7 +90,7 @@ int main()
         break;
 
       cube.pop_back();
-    } while (cube.size() >= 12);//15); // 1
+    } while (cube.size() >= 15);//15); // 1
 
     if (found)
     {

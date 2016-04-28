@@ -27,7 +27,7 @@ void Cube::sumRange(uint64_t result[], uint64_t key[], CubeRange range) {
 }
 
 void Cube::deriveParallel(uint64_t key[], uint64_t result[]) {
-    uint64_t tempResults[nThreads][2] = { 0 };
+    uint64_t tempResults[nThreads][2];
     memset(tempResults, 0, nThreads * 8 * 2);
     //uint64_t tempResults[nThreads][5] = { 0 }; 320 bit Tag
 
