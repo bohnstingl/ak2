@@ -154,10 +154,6 @@ int main()
 
   printf("Equations read\n");
 
-  //Iterate over the solutions2.
-  //1.) Compute the output of the certain cube
-  //2.) Use equations and constants to recover key bits
-
   for(int i = 0; i < solIndex2; i++)
   {
     printf("Checking solutions %d / %d\n", i, solIndex2);
