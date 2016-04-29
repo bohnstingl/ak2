@@ -98,6 +98,11 @@ void thetaRhoPi(uint64_t st[]) {
   }
 }
 
+void inverseIotaChiRow(uint64_t row[], int round_to_invert) {
+  row[0] ^= keccakf_rndc[round_to_invert];
+  inverseChiRow(row);
+}
+
 void inverseIotaChi(uint64_t st[], int round) {
   st[0] ^= keccakf_rndc[round];
   inverseChi(st);
@@ -128,6 +133,18 @@ void inverseChi(uint64_t st[])
     st[r + 3] = row[0] ^ row[2] ^ row[3] ^ row[0] & row[4] ^ row[1] & row[2] ^ row[2] & row[4] ^ row[1] & row[2] & row[4];
     st[r + 4] = row[1] ^ row[3] ^ row[4] ^ row[0] & row[1] ^ row[0] & row[3] ^ row[2] & row[3] ^ row[0] & row[2] & row[3];
   }
+}
+
+void inverseChiRow(uint64_t row_to_invert[])
+{
+  uint64_t row[5];
+  memcpy(row, row_to_invert, 5 * 8);
+  
+  row_to_invert[0]     = row[0] ^ row[2] ^ row[4] ^ row[1] & row[2] ^ row[1] & row[4] ^ row[3] & row[4] ^ row[1] & row[3] & row[4];
+  row_to_invert[1] = row[0] ^ row[1] ^ row[3] ^ row[0] & row[2] ^ row[0] & row[4] ^ row[2] & row[3] ^ row[0] & row[2] & row[4];
+  row_to_invert[2] = row[1] ^ row[2] ^ row[4] ^ row[0] & row[1] ^ row[1] & row[3] ^ row[3] & row[4] ^ row[0] & row[1] & row[3];
+  row_to_invert[3] = row[0] ^ row[2] ^ row[3] ^ row[0] & row[4] ^ row[1] & row[2] ^ row[2] & row[4] ^ row[1] & row[2] & row[4];
+  row_to_invert[4] = row[1] ^ row[3] ^ row[4] ^ row[0] & row[1] ^ row[0] & row[3] ^ row[2] & row[3] ^ row[0] & row[2] & row[3];
 }
 
 // compute a keccak hash (md) of given byte length from "in"

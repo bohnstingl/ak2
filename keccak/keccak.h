@@ -22,6 +22,8 @@ void chi(uint64_t st[25]);
 void inverseChi(uint64_t st[25]);
 void thetaRhoPi(uint64_t st[25]);
 void inverseIotaChi(uint64_t st[25], int round);
+void inverseChiRow(uint64_t row_to_invert[]);
+void inverseIotaChiRow(uint64_t row[], int round_to_invert);
 
 // update the state
 void keccakf(uint64_t st[25], int norounds);
