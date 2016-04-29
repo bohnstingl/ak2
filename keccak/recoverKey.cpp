@@ -42,10 +42,12 @@ void fillRandomKey(uint64_t st[])
     ((uint32_t *) st)[i] = rand();
 }
 
-void readEquations()
+void readEquations(char argv[])
 {
   string line;
-  ifstream cubes ("./cubes.txt");
+  string filePath(argv);
+  ifstream cubes (filePath);
+  //ifstream cubes ("./cubes.txt");
   vector<uint> keyBits;
   char cubeIndexLine = 0;
   if (cubes.is_open())
@@ -134,15 +136,21 @@ void recoverKey(uint64_t output[], int solutionIndex)
   }
 }
 
-int main()
+int main(int argc, char * argv[])
 {
   srand(time(NULL));
   uint64_t key2[2];
   memset(recoveredKey, 0, 16);
   memset(key2, 0, 16);
+  
+  if(argc != 2)
+  {
+    printf("Missing file:\nUSAGE: ./recoverKey <path to cube file>\n");
+    exit(0);
+  }
 
   //Read the file with the cubes inside
-  readEquations();
+  readEquations(argv[1]);
 
   //Iterate over the solutions.
   //1.) Compute the output of the certain cube
@@ -164,7 +172,7 @@ int main()
 
       cube.deriveParallel(key2, res);
 
-      recoverKey(res, index, key2);
+      recoverKey(res, index);
     }
 
     if(memcmp(recoveredKey, key2, 16) != 0)
