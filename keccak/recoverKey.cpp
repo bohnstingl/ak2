@@ -170,7 +170,7 @@ int main(int argc, char * argv[])
       uint64_t res[2];
       memset(res, 0, 16);
 
-      cube.deriveParallel(key2, res);
+      cube.deriveParallel(key2, res, 0);
 
       recoverKey(res, index);
     }

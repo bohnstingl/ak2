@@ -121,7 +121,7 @@ void cubeCoefficients(uint64_t coefficients[][5], vector<uint> cubeIndices, uint
 
 bool checkLinearity(Cube &cube)
 {
-  uint certainty = 100;
+  uint certainty = 200;
   uint64_t zero[5];
 
   uint64_t key[2], key2[2], key3[2];
@@ -146,11 +146,11 @@ bool checkLinearity(Cube &cube)
     key3[0] = key[0] ^ key2[0];
     key3[1] = key[1] ^ key2[1];
     
-    cube.deriveParallel(key, res);
-    cube.deriveParallel(key2, res2);
-    cube.deriveParallel(zero, res_constant);
+    cube.deriveParallel(key, res, 0);
+    cube.deriveParallel(key2, res2, 0);
+    cube.deriveParallel(zero, res_constant, 0);
 
-    cube.deriveParallel(key3, res3);
+    cube.deriveParallel(key3, res3, 0);
     res[0] ^= res2[0] ^ res_constant[0];
     res[1] ^= res2[1] ^ res_constant[1];
     res[2] ^= res2[2] ^ res_constant[2];
@@ -173,8 +173,10 @@ int main()
   memset(key, 0, 16);
   uint loop_var;
   bool found, linear = true;
+  int cubes = 0;
 
-  for (uint amount = 0; amount < 5000; amount++)
+  //for (uint amount = 0; amount < 5000; amount++)
+  while(cubes < 300)
   {
     Cube cube(4);
     cube.randomCube((1 << cube.keccak_rounds_) - 1, 128, 256);
@@ -199,7 +201,7 @@ int main()
         if (key_bit >= 0)
           ST_SET_BIT(key, key_bit);
 
-        cube.deriveParallel(key, coefficients[key_bit + 1]);
+        cube.deriveParallel(key, coefficients[key_bit + 1], 0);
         if (key_bit >= 0)
         {
           coefficients[key_bit + 1][0] ^= coefficients[0][0];
@@ -244,6 +246,7 @@ int main()
       printCoefficientsMachine(coefficients);
       cout << "---------------------------------------------------------"
           << endl;
+      cubes++;
     }
   }
 

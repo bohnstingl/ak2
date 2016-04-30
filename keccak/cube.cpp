@@ -7,7 +7,7 @@ using namespace std;
 
 uint Cube::nThreads = 8;
 
-void Cube::sumRange(uint64_t result[], uint64_t key[], CubeRange range) {
+void Cube::sumRange(uint64_t result[], uint64_t key[], CubeRange range, int mode) {
     cubeIterator it = range.first;
     uint64_t st[25];
 
@@ -26,7 +26,7 @@ void Cube::sumRange(uint64_t result[], uint64_t key[], CubeRange range) {
     }
 }
 
-void Cube::deriveParallel(uint64_t key[], uint64_t result[]) {
+void Cube::deriveParallel(uint64_t key[], uint64_t result[], int mode) {
     uint64_t tempResults[nThreads][2];
     memset(tempResults, 0, nThreads * 8 * 2);
     //uint64_t tempResults[nThreads][5] = { 0 }; 320 bit Tag
@@ -36,7 +36,7 @@ void Cube::deriveParallel(uint64_t key[], uint64_t result[]) {
 
     for (th = 0; th < nThreads; th ++) {
         CubeRange range = getEqualCubeRange(th, nThreads);
-        thread *newThread = new thread(&Cube::sumRange, this, tempResults[th], key, range);
+        thread *newThread = new thread(&Cube::sumRange, this, tempResults[th], key, range, mode);
         threads.push_back(newThread);
     }
 

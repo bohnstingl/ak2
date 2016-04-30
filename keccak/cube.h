@@ -87,9 +87,8 @@ public:
   }
   ;
 
-  void sumRange(uint64_t result[], uint64_t key[],
-      std::pair<Cube::cubeIterator, Cube::cubeIterator> range);
-  void deriveParallel(uint64_t key[], uint64_t result[]);
+  void sumRange(uint64_t result[], uint64_t key[], std::pair<Cube::cubeIterator, Cube::cubeIterator> range, int mode);
+  void deriveParallel(uint64_t key[], uint64_t result[], int mode);
   void randomCube(uint dim, uint min, uint max);
 
   void addArray(uint indices[], uint length)

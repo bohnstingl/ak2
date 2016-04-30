@@ -16,12 +16,13 @@
 #define IS_ST_BIT(st, bit) ((st)[(bit) / 64] & ((uint64_t) 1 << ((bit) % 64)))
 
 using namespace std;
-void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len);
-void mapVarToStateBits(uint64_t st[], vector<uint> indices, uint count);
-void fillRandomKey(uint64_t st[]);
 
 typedef unsigned int uint;
 typedef pair<Cube::cubeIterator, Cube::cubeIterator> CubeRange;
+
+void printHexMessage(unsigned char hash[], int len);
+void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len);
+void inverseIotaChiRow(uint64_t row[], int round_to_invert);
 
 typedef struct sol
 {
@@ -30,15 +31,23 @@ typedef struct sol
   uint cubeVars[31] = {};
   uint cubeVarsLen = 0;
 };
-sol solutions[1000];
+
+unsigned char recoveredKey[16];
+sol solutions[100000];
+vector<int> keyBitSolIndices;
 int solIndex = 0;
-int wrongCounter = 0;
+
+void fillRandomKey(uint64_t st[])
+{
+  for (int i = 0; i < 4; i++)
+    ((uint32_t *) st)[i] = rand();
+}
 
 void readEquations(char argv[])
 {
   string line;
-  string path(argv);
-  ifstream cubes (path);
+  string filePath(argv);
+  ifstream cubes (filePath);
   vector<uint> keyBits;
   char cubeIndexLine = 0;
   if (cubes.is_open())
@@ -91,12 +100,13 @@ void readEquations(char argv[])
           simple = 1;
         }
 
-        vector<uint>::iterator it = find(keyBits.begin(), keyBits.end(), keyBit);
-        if(simple && it == keyBits.end())
+        if(simple && find(keyBits.begin(), keyBits.end(), keyBit) == keyBits.end())
         {
           solutions[solIndex].equations.insert(pair<uint, uint>(keyBit, outputBit));
           solutions[solIndex].constants.insert(pair<uint, uint>(keyBit, constant));
           keyBits.push_back(keyBit);
+          if(find(keyBitSolIndices.begin(), keyBitSolIndices.end(), solIndex) == keyBitSolIndices.end())
+            keyBitSolIndices.push_back(solIndex);
         }
       }
     }
@@ -105,7 +115,7 @@ void readEquations(char argv[])
   }
 }
 
-void checkEquations(uint64_t output[], uint64_t key[2], int solutionIndex)
+void recoverKey(uint64_t output[], int solutionIndex)
 {
   //Iterate over the equations
   for(auto eq: solutions[solutionIndex].equations)
@@ -118,77 +128,72 @@ void checkEquations(uint64_t output[], uint64_t key[2], int solutionIndex)
     else
       val = 0;
 
-    uint keyBit = IS_ST_BIT(key, eq.first) == 0 ? 0 : 1;
-    if((val ^ con) != keyBit)
-    {
-      unsigned char bin[129];
-      hexToBinReadable((unsigned char*)key, bin, 16);
-      hexToBinReadable((unsigned char*)output, bin, 16);
-      wrongCounter++;
-
-      printf("Not the correct: keyBit: %d and outputbit:%d with constant: %d\n", eq.first, eq.second, con);
-    }
-  }
-}
-
-void fillRandomKey(uint64_t st[])
-{
-  for (int i = 0; i < 4; i++)
-    ((uint32_t *) st)[i] = rand();
-}
-
-void mapVarToStateBits(uint64_t st[], vector<uint> indices, uint count) {
-  for (int i = 0; i < indices.size(); i ++) {
-    if (count & (1 << i))
-      ST_SET_BIT(st, indices[i]);
+    uint res = con ^ val;
+    if(res)
+      recoveredKey[eq.first / 8] |= 1 << (eq.first % 8);
     else
-      ST_CLR_BIT(st, indices[i]);
+      recoveredKey[eq.first / 8] &= ~(1 << (eq.first % 8));
   }
 }
 
 int main(int argc, char * argv[])
 {
   srand(time(NULL));
+  uint64_t key2[2];
+  memset(recoveredKey, 0, 16);
+  memset(key2, 0, 16);
+  
+  if(argc != 2)
+  {
+    printf("Missing file:\nUSAGE: ./recoverKey <path to cube file>\n");
+    exit(0);
+  }
 
   //Read the file with the cubes inside
   readEquations(argv[1]);
 
-  printf("Equations read\n");
+  //Iterate over the solutions.
+  //1.) Compute the output of the certain cube
+  //2.) Use equations and constants to recover key bits
 
-  for(int i = 0; i < solIndex; i++)
+  for(int k = 0; k < 100; k++)
   {
-    printf("Checking solutions %d / %d\n", i, solIndex);
-    for(int z = 0; z < solutions[i].cubeVarsLen; z++)
-      printf("%d ", solutions[i].cubeVars[z]);
-    printf("\n");
+    fillRandomKey(key2);
+    memset(recoveredKey, 0, 16);
 
-    for(int j = 0; j < 100; j++)
+    for(unsigned int i = 0; i < keyBitSolIndices.size(); i++)
     {
-      uint64_t res[2], st[25];
-      memset(st, 0, 25 * 8);
-      memset(res, 0, 16);
-      uint64_t key[2];
-      fillRandomKey(key);
+      int index = keyBitSolIndices.at(i);
+      Cube cube(5);
+      cube.addArray(solutions[index].cubeVars, solutions[index].cubeVarsLen);
 
-      for (uint64_t k = 0; k < ((uint64_t) 1 << solutions[i].cubeVarsLen); k++)
-      {
-        memset(st, 0, 8 * 25);
-        mapVarToStateBits(st, vector<uint>(solutions[i].cubeVars, solutions[i].cubeVars + solutions[i].cubeVarsLen), k);
-        memcpy(st, key, 16);
+      uint64_t res[5];
+      memset(res, 0, 5 * 8);
 
-        keccakf(st, 4);
+      cube.deriveParallel(key2, res, 1);
 
-        res[0] ^= st[0];
-        res[1] ^= st[1];
-      }
-
-      checkEquations(res, key, i);
+      recoverKey(res, index);
     }
 
-    printf("%d / 100 wrong!\n", wrongCounter);
-    wrongCounter = 0;
-
+    if(memcmp(recoveredKey, key2, 16) != 0)
+    {
+      printf("Key recovery failed!\n");
+      unsigned char bin[129];
+      printHexMessage(recoveredKey, 16);
+      printHexMessage((unsigned char*)key2, 16);
+      hexToBinReadable(recoveredKey, bin, 16);
+      hexToBinReadable((unsigned char*)key2, bin, 16);
+      exit(0);
+    }
+    else
+    {
+      printHexMessage(recoveredKey, 16);
+      printHexMessage((unsigned char*)key2, 16);
+      printf("Key recovery successful %d / 100\n", k + 1);
+    }
   }
+
+  printf("Programm ended successfully!\n");
 
   return 0;
 }
