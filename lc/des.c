@@ -13,6 +13,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 #define uchar unsigned char
 #define uint unsigned int
@@ -601,31 +602,208 @@ void generateRandomData(uchar input[][8], int amount)
   }
 }
 
+#define IS_BIT(x, n) (((x) & ((uint64_t) 1 << (n))) >> (n))
+
+uint32_t linearMask64(uint64_t data, uint64_t indices[], uint32_t count)
+{
+  uint32_t res = 0;
+  
+  for (int i = 0; i < count; i ++)
+    res ^= IS_BIT(data, indices[i]);
+  
+  return res;
+}
+
+uint32_t linearMaskKey(uint8_t key[], uint64_t indices[], uint32_t count)
+{
+  uint32_t res = 0;
+  
+  for (int i = 0; i < count; i ++)
+    res ^= IS_BIT(key[indices[i] / 8], indices[i] % 8);
+  
+  return res;
+}
+
+void des_3_round_probability(uint8_t key[]) {
+  uint count = 0;
+  uint8_t schedule[ROUNDS][6], input[DATA][8];
+  
+  for(unsigned int j = 0; j < 100; j++)
+  {
+    generateRandomData(input, DATA);
+    key_schedule(key, schedule, ENCRYPT);
+    for(unsigned int i = 0; i < DATA; i++)
+    {
+      uint64_t in;
+      memcpy(&in, input[i], 8);
+      uint32_t p_h = (uint32_t) in, p_l = (uint32_t) (in >> 32);
+      
+      //START FEISTEL
+      uint32_t state = p_l;
+      uint32_t left = p_h, temp = 0;
+      temp = state;
+      state = left ^ f(state, schedule[0]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[1]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[2]);
+      left = temp;
+      
+      uint64_t out = state;
+      out |= ((uint64_t) left << 32);
+      
+      uint64_t outmask[] = {7, 18, 24, 29, 32 + 15};
+      uint64_t inmask[] = {7, 18, 24, 29, 32 + 15};
+      uint64_t keymask1[] = {22};
+      uint64_t keymask2[] = {22};
+      count += linearMask64(in, inmask, 5) ^ linearMaskKey(schedule[0], keymask1, 1) ^ linearMaskKey(schedule[2], keymask2, 1) ^ linearMask64(out, outmask, 5);
+      
+    }
+  }
+  printf("probability: %lf\n", (double) count / (65536 * 100));
+}
+
+void des_5_round_probability(uint8_t key[]) {
+  uint count = 0;
+  uint8_t schedule[ROUNDS][6], input[DATA][8];
+  
+  for(unsigned int j = 0; j < 100; j++)
+  {
+    generateRandomData(input, DATA);
+    key_schedule(key, schedule, ENCRYPT);
+    for(unsigned int i = 0; i < DATA; i++)
+    {
+      uint64_t in;
+      memcpy(&in, input[i], 8);
+      uint32_t p_h = (uint32_t) in, p_l = (uint32_t) (in >> 32);
+      
+      //START FEISTEL
+      uint32_t state = p_l;
+      uint32_t left = p_h, temp = 0;
+      temp = state;
+      state = left ^ f(state, schedule[0]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[1]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[2]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[3]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[4]);
+      left = temp;
+      
+      uint64_t out = state;
+      out |= ((uint64_t) left << 32);
+      
+      uint64_t outmask[] = {15, 7 + 32, 18 + 32, 24 + 32, 27 + 32, 28 + 32, 29 + 32, 30 + 32, 31 + 32};
+      uint64_t inmask[] = {15, 7 + 32, 18 + 32, 24 + 32, 27 + 32, 28 + 32, 29 + 32, 30 + 32, 31 + 32};
+      uint64_t keymask1[] = {42, 43, 45, 46};
+      uint64_t keymask2[] = {22};
+      uint64_t keymask4[] = {22};
+      uint64_t keymask5[] = {42, 43, 45, 46};
+      count += linearMask64(in, inmask, 9) ^ linearMaskKey(schedule[0], keymask1, 4) ^ linearMaskKey(schedule[1], keymask2, 1) ^ linearMaskKey(schedule[3], keymask4, 1) ^ linearMaskKey(schedule[4], keymask5, 4) ^ linearMask64(out, outmask, 9);
+      
+    }
+  }
+  printf("probability: %lf\n", (double) count / (65536 * 100));
+}
+
+void des_7_round_probability(uint8_t key[]) {
+  uint count = 0;
+  uint8_t schedule[ROUNDS][6], input[DATA][8];
+  
+  for(unsigned int j = 0; j < 100; j++)
+  {
+    generateRandomData(input, DATA);
+    key_schedule(key, schedule, ENCRYPT);
+    for(unsigned int i = 0; i < DATA; i++)
+    {
+      uint64_t in;
+      memcpy(&in, input[i], 8);
+      uint32_t p_h = (uint32_t) in, p_l = (uint32_t) (in >> 32);
+      
+      //START FEISTEL
+      uint32_t state = p_l;
+      uint32_t left = p_h, temp = 0;
+      temp = state;
+      state = left ^ f(state, schedule[0]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[1]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[2]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[3]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[4]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[5]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[6]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[7]);
+      left = temp;
+      
+      uint64_t out = state;
+      out |= ((uint64_t) left << 32);
+      
+      uint32_t f8 = f(left, schedule[7]);
+      
+      uint64_t outmask[] = {15, 7 + 32, 18 + 32, 24 + 32, 29 + 32};
+      uint64_t inmask[] = {7, 18, 24, 12 + 32, 16 + 32};
+      
+      uint64_t keymask1[] = {19, 23};
+      uint64_t keymask3[] = {22};
+      uint64_t keymask4[] = {44};
+      uint64_t keymask5[] = {22};
+      uint64_t keymask7[] = {22};
+      
+      uint32_t key_xor = linearMaskKey(schedule[0], keymask1, 2);
+      key_xor ^= linearMaskKey(schedule[2], keymask3, 1);
+      key_xor ^= linearMaskKey(schedule[3], keymask4, 1);
+      key_xor ^= linearMaskKey(schedule[4], keymask5, 1);
+      key_xor ^= linearMaskKey(schedule[6], keymask7, 1);
+      
+      count += linearMask64(in, inmask, 5) ^ key_xor ^ linearMask64(out, outmask, 5) ^ IS_BIT(f8, 15);
+      
+    }
+  }
+  printf("probability: %lf\n", (double) count / (65536 * 100));
+}
+
 int main()
 {
-   unsigned char key1[8]={0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF},
-                 out[8],schedule[ROUNDS][6],
-                 input[DATA][8];
+   unsigned char key1[8]={0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF};
 
    srand(time(NULL));
 
-   for(unsigned int z = 0; z < 5; z++)
-   {
-     for(unsigned int j = 0; j < 20; j++)
-     {
-       generateRandomData(input, DATA);
-       for(unsigned int i = 0; i < DATA; i++)
-       {
-         key_schedule(key1,schedule,ENCRYPT);
-         //des_crypt_3(input[i], out, schedule);
-         des_crypt_5(input[i], out, schedule);
-         //des_crypt_7(input[i], out, schedule);
-       }
-     }
-     printf("Found %d matches of %d -> %lf\n", matches, total, (double)matches / (double)total);
-     matches = 0;
-     total = 0;
-  }
+   uint count = 0;
+   des_7_round_probability(key1);
 
    //Generate plain and cipher text pairs
    /*key_schedule(key1,schedule,ENCRYPT);
