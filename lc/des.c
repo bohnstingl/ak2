@@ -720,7 +720,7 @@ void des_5_round_probability(uint8_t key[]) {
   printf("probability: %lf\n", (double) count / (65536 * 100));
 }
 
-void des_7_round_probability(uint8_t key[]) {
+void des_7_alternate_round_probability(uint8_t key[]) {
   uint count = 0;
   uint8_t schedule[ROUNDS][6], input[DATA][8];
   
@@ -790,6 +790,76 @@ void des_7_round_probability(uint8_t key[]) {
       key_xor ^= linearMaskKey(schedule[6], keymask7, 1);
       
       count += linearMask64(in, inmask, 5) ^ key_xor ^ linearMask64(out, outmask, 5) ^ IS_BIT(f8, 15);
+      
+    }
+  }
+  printf("probability: %lf\n", (double) count / (65536 * 100));
+}
+
+void des_7_round_probability(uint8_t key[]) {
+  uint count = 0;
+  uint8_t schedule[ROUNDS][6], input[DATA][8];
+  
+  for(unsigned int j = 0; j < 100; j++)
+  {
+    generateRandomData(input, DATA);
+    key_schedule(key, schedule, ENCRYPT);
+    for(unsigned int i = 0; i < DATA; i++)
+    {
+      uint64_t in;
+      memcpy(&in, input[i], 8);
+      uint32_t p_h = (uint32_t) in, p_l = (uint32_t) (in >> 32);
+      
+      //START FEISTEL
+      uint32_t state = p_l;
+      uint32_t left = p_h, temp = 0;
+      temp = state;
+      state = left ^ f(state, schedule[0]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[1]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[2]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[3]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[4]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[5]);
+      left = temp;
+      
+      temp = state;
+      state = left ^ f(state, schedule[6]);
+      left = temp;
+      
+      uint64_t out = state;
+      out |= ((uint64_t) left << 32);
+      
+      uint64_t outmask[] = {7, 18, 24, 29, 32 + 15};
+      uint64_t inmask[] = {7, 18, 24, 32 + 12, 32 + 16};
+      
+      uint64_t keymask1[] = {19, 23};
+      uint64_t keymask3[] = {22};
+      uint64_t keymask4[] = {44};
+      uint64_t keymask5[] = {22};
+      uint64_t keymask7[] = {22};
+      
+      uint32_t key_xor = linearMaskKey(schedule[0], keymask1, 2);
+      key_xor ^= linearMaskKey(schedule[2], keymask3, 1);
+      key_xor ^= linearMaskKey(schedule[3], keymask4, 1);
+      key_xor ^= linearMaskKey(schedule[4], keymask5, 1);
+      key_xor ^= linearMaskKey(schedule[6], keymask7, 1);
+      
+      count += linearMask64(in, inmask, 5) ^ key_xor ^ linearMask64(out, outmask, 5);
       
     }
   }
