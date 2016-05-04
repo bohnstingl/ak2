@@ -267,7 +267,7 @@ void des_3_round_probability(uint8_t key[]) {
 
     }
   }
-  printf("probability: %lf\n", (double) count / (65536 * 100));
+  printf("probability 3 rounds: %lf\n", (double) count / (65536 * 100));
 }
 
 void des_5_round_probability(uint8_t key[]) {
@@ -320,7 +320,7 @@ void des_5_round_probability(uint8_t key[]) {
 
     }
   }
-  printf("probability: %lf\n", (double) count / (65536 * 100));
+  printf("probability 5 rounds: %lf\n", (double) count / (65536 * 100));
 }
 
 void des_7_alternate_round_probability(uint8_t key[]) {
@@ -392,11 +392,11 @@ void des_7_alternate_round_probability(uint8_t key[]) {
       key_xor ^= linearMaskKey(schedule[4], keymask5, 1);
       key_xor ^= linearMaskKey(schedule[6], keymask7, 1);
 
-      count += linearMask64(in, inmask, 5) ^ key_xor ^ linearMask64(out, outmask, 5) ^ IS_BIT(f8, 15);
+      count += linearMask64(in, inmask, 5) ^ key_xor ^ linearMask64(out, outmask, 5) ^ IS_BIT(f8, 15) ^ 1;
 
     }
   }
-  printf("probability: %lf\n", (double) count / (65536 * 100));
+  printf("probability 7 rounds: %lf\n", (double) count / (65536 * 100));
 }
 
 void des_7_round_probability(uint8_t key[]) {
@@ -462,11 +462,11 @@ void des_7_round_probability(uint8_t key[]) {
       key_xor ^= linearMaskKey(schedule[4], keymask5, 1);
       key_xor ^= linearMaskKey(schedule[6], keymask7, 1);
 
-      count += linearMask64(in, inmask, 5) ^ key_xor ^ linearMask64(out, outmask, 5);
+      count += linearMask64(in, inmask, 5) ^ key_xor ^ linearMask64(out, outmask, 5) ^ 1;
 
     }
   }
-  printf("probability: %lf\n", (double) count / (65536 * 100));
+  printf("probability 7 rounds: %lf\n", (double) count / (65536 * 100));
 }
 
 void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len)
@@ -494,22 +494,43 @@ void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len)
 void attackThread(uint8_t key[], uint32_t k, uint32_t *counterval)
 {
   uint8_t schedule[ROUNDS][6], input[DATA][8];
+  uint count = 0;
 
   //Make a guess of the eight round key
   uint8_t schedule7[6];
   memset(schedule7, 0, 6);
 
+  k = 63;
+  k = 0b110100;
   for(unsigned int j = 0; j < 6; j++)
   {
     //Set the bits of the key
     if(k & (1 << j))
       SET_BIT((uint64_t*)schedule7, 42 + j);
   }
+  //By changing one of the lower bits here the bias changes.
+  //The assumption that only bits 42-47 are influencing the result does
+  //somehow not hold in this case
+  /*schedule7[0] = 0b01010111;
+  schedule7[1] = 0b10001000;
+  schedule7[2] = 0b00111000;
+
+  schedule7[3] = 0b01101100;
+  schedule7[4] = 0b11100101;
+  schedule7[5] = 0b10000001;*/
 
   for(unsigned int j = 0; j < 100; j++)
   {
     generateRandomData(input, DATA);
     key_schedule(key, schedule, ENCRYPT);
+
+    /*printf("%u / %u\n", schedule7[0], schedule[7][0]);
+    printf("%u / %u\n", schedule7[1], schedule[7][1]);
+    printf("%u / %u\n", schedule7[2], schedule[7][2]);
+    printf("%u / %u\n", schedule7[3], schedule[7][3]);
+    printf("%u / %u\n", schedule7[4], schedule[7][4]);
+    printf("%u / %u\n", schedule7[5], schedule[7][5]);*/
+
     for(unsigned int i = 0; i < DATA; i++)
     {
       uint64_t in;
@@ -518,7 +539,7 @@ void attackThread(uint8_t key[], uint32_t k, uint32_t *counterval)
 
       //START FEISTEL
       uint32_t state = p_l, state2 = 0;
-      uint32_t left = p_h, left2 = 0, temp = 0;
+      uint32_t left = p_h, temp = 0;
 
       temp = state;
       state = left ^ f(state, schedule[0]);
@@ -553,24 +574,34 @@ void attackThread(uint8_t key[], uint32_t k, uint32_t *counterval)
       left = temp;
 
       //8th round with guessed key
-      state2 = f(state, schedule7);
+      state2 = f(left, schedule7);
 
       uint64_t out = state;
       out |= ((uint64_t) left << 32);
 
-      uint64_t inverse8 = state2;
-      inverse8 |= ((uint64_t) state2 << 32);
-
       uint64_t outmask[] = {15, 32 + 7, 32 + 18, 32 + 24, 32 + 29};
       uint64_t inmask[] = {7, 18, 24, 32 + 12, 32 + 16};
-      uint64_t guessmask[] = {32 + 15};
+      uint32_t leftSide = linearMask64(in, inmask, 5) ^ linearMask64(out, outmask, 5) ^ IS_BIT(state2, 15) ^ 1;
 
-      uint32_t leftSide = linearMask64(in, inmask, 5) ^ linearMask64(out, outmask, 5) ^ linearMask64(inverse8, guessmask, 1);
+      uint64_t keymask1[] = {19, 23};
+      uint64_t keymask3[] = {22};
+      uint64_t keymask4[] = {44};
+      uint64_t keymask5[] = {22};
+      uint64_t keymask7[] = {22};
+
+      uint32_t key_xor = linearMaskKey(schedule[0], keymask1, 2);
+      key_xor ^= linearMaskKey(schedule[2], keymask3, 1);
+      key_xor ^= linearMaskKey(schedule[3], keymask4, 1);
+      key_xor ^= linearMaskKey(schedule[4], keymask5, 1);
+      key_xor ^= linearMaskKey(schedule[6], keymask7, 1);
 
       if(leftSide == 0)
         (*counterval)++;
+
+      count += linearMask64(in, inmask, 5) ^ key_xor ^ linearMask64(out, outmask, 5) ^ 1 ^ IS_BIT(state2, 15);
     }
   }
+  //printf("probability: %lf\n", (double) count / (65536 * 100));
 }
 
 void des_8_round_attack(uint8_t key[]) {
@@ -618,29 +649,21 @@ void des_8_round_attack(uint8_t key[]) {
 
   if(l > r)
   {
-    printf("bigger");
+    printf("adjust the keyguess based on max index\n");
   }
   else
   {
-    printf("smaller");
+    printf("adjust the keyguess based on min index\n");
   }
-
-  printf("here");
 }
 
 int main()
 {
-   //unsigned char key1[8]={0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF};
-   unsigned char key1[8]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-   unsigned char bin[129];
-
-   hexToBinReadable(key1, bin, 8);
+   unsigned char key1[8]={0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF};
    srand(time(NULL));
-
-   uint count = 0;
-   /*des_3_round_probability(key1);
+   des_3_round_probability(key1);
    des_5_round_probability(key1);
-   des_7_round_probability(key1);*/
+   des_7_round_probability(key1);
 
    des_8_round_attack(key1);
 
