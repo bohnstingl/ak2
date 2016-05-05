@@ -1,4 +1,5 @@
-1.) compile the file using: g++ -std=c++11 des.cpp -lpthread
+1.) compile the file using: g++ -std=c++11 des.cpp -lpthread -o des
+2.) run des
 
 The output contains the bias for 3, 5 and 7 rounds of DES with respect to the linear cryptanalysis
 task. 

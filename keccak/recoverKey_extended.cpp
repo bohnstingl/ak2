@@ -24,13 +24,13 @@ void printHexMessage(unsigned char hash[], int len);
 void hexToBinReadable(unsigned char hex[], unsigned char bin[], int len);
 void inverseIotaChiRow(uint64_t row[], int round_to_invert);
 
-typedef struct sol
+typedef struct 
 {
   map<uint, uint> equations;
   map<uint, uint> constants;
   uint cubeVars[31] = {};
   uint cubeVarsLen = 0;
-};
+} sol;
 
 unsigned char recoveredKey[16];
 sol solutions[100000];
@@ -110,7 +110,7 @@ void readEquations(char argv[])
         }
       }
     }
-    printf("%d\n", keyBits.size());
+    printf("%ld\n", keyBits.size());
     cubes.close();
   }
 }
