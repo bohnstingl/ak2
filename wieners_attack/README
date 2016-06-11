@@ -1,0 +1,8 @@
+Wiener's Attack on RSA
+
+(a) continued fractions:
+-- def continued_fraction in wieners_attack.sage
+
+(b) recover RSA private key:
+-- 1) start sage in directory containing wieners_attack.sage
+-- 2) run command: load("wieners_attack.sage")

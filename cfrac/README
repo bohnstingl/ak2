@@ -1,0 +1,23 @@
+Factoring with Continued Fractions
+
+(a) random squares:
+-- 1) start sage in directory containing dixon.sage and common_functions.sage
+-- 2) run command: load("dixon.sage")
+
+(b) continued fractions:
+-- def continued_fraction in common_functions.sage
+
+(c) factor 32bit number
+-- 1) open cfrac.sage and find line: setting = ...
+-- 2) change to: setting = setting_1
+-- 3) save
+-- 4) start sage in directory containing dixon.sage and common_functions.sage
+-- 5) run command: load("cfrac.sage")
+
+(d) factor 64bit number
+-- 1) open cfrac.sage and find line: setting = ...
+-- 2) change to: setting = setting_2
+-- 3) save
+-- 4) start sage in directory containing dixon.sage and common_functions.sage
+-- 5) run command: load("cfrac.sage")
+-- 6) wait
