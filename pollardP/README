@@ -1,0 +1,16 @@
+Pollard P
+
+This task was implemented using the sage notebook.
+The PollardP.sws can be imported in the sage notebook.
+The function PollardP can be used to apply the attack on the given Parameters
+
+pollardP(y, g, p)
+whereas the parametes statisfy the equation g^alpha = y mod p.
+alpha is the unknown parameter.
+
+example:
+pollardP(22, 2, 37)
+
+the result is the parameter alpha
+
+The results of this task are listed in the file as alpha, beta, alpha2 and beta2
